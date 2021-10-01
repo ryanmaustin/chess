@@ -1,0 +1,79 @@
+.main {
+  background-color: #b3cdd1;
+  background-image: linear-gradient(315deg, #b3cdd1 0%, #9fa4c4 74%);
+}
+
+.board-container {
+  display: flex;
+  align-items: center;
+}
+
+.board {
+  background-color: #b1bfd8;
+  background-image: linear-gradient(315deg, #b1bfd8 0%, #6782b4 74%);
+  height: 45vh;
+  width: 45vh;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+
+  min-height: 12.5%;
+  min-width: 12.5%;
+}
+
+.tile {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.piece-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  z-index: 100;
+}
+
+.piece {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+  max-height: 80%;
+  max-width: 75%;
+  cursor: pointer;
+}
+
+.piece:hover {
+  filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.8));
+}
+
+/* .available-move {
+  position: relative;
+
+  height: 100%;
+  width: 100%;
+  line-height: 100%;
+  margin: 0;
+
+  font-size: 30pt;
+  color: #9597a3;
+  z-index: 150;
+  text-align: center;
+} */
+
+
+.available-move {
+  box-shadow: inset 0px 0px 2px 4px rgb(162, 159, 211);
+}
+
+.make-move {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+}
