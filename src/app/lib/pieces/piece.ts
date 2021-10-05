@@ -18,6 +18,8 @@ export enum PieceColor {
 
 export abstract class Piece {
 
+  protected _captured: boolean = false;
+  protected moves: number = 0;
   protected type: PieceType;
   protected color: PieceColor;
   protected position: Position;
@@ -25,6 +27,20 @@ export abstract class Piece {
   constructor(type: PieceType, color: PieceColor) {
     this.type = type;
     this.color = color;
+  }
+
+  public abstract getClone(): Piece;
+
+  public moved() {
+    this.moves++;
+  }
+
+  public captured() {
+    this._captured = true;
+  }
+
+  public getMoves(): number {
+    return this.moves;
   }
 
   public getType(): PieceType
@@ -51,21 +67,38 @@ export abstract class Piece {
     this.position = pos;
   }
 
-  public getAvailableMoves(boardPosition: Array<Tile>, boardFlipped: boolean): Array<Position> {
-    return this.filterOutOccupiedTilesOfSameColor(
+  public getAvailableMoves(boardPosition: Array<Tile>): Array<Position> {
+    if (this._captured) return [];
+
+    return this.removeIllegalMoves(
       boardPosition,
-      this.availableMoves(boardPosition, boardFlipped),
-      this.getColor()
+      this.availableMoves(boardPosition)
     );
   }
 
-  private filterOutOccupiedTilesOfSameColor(boardPosition: Array<Tile>, moves: Array<Position>, color: PieceColor): Array<Position>
+  private removeIllegalMoves(boardPosition: Array<Tile>, moves: Array<Position>): Array<Position> {
+
+    moves = this.filterOutOccupiedTilesOfSameColor(
+      boardPosition,
+      moves
+    );
+
+    // Remove moves that would put the king in check
+    moves = this.filterOutMovesThatPutKingInCheck(
+      boardPosition,
+      moves
+    );
+
+    return moves;
+  }
+
+  private filterOutOccupiedTilesOfSameColor(boardPosition: Array<Tile>, moves: Array<Position>): Array<Position>
   {
     const validMoves = new Array<Position>();
 
     for (const move of moves)
     {
-      if (!PositionUtil.tileOccupiedBySameColor(boardPosition, color, move))
+      if (!PositionUtil.tileOccupiedBySameColor(boardPosition, this.getColor(), move))
       {
         validMoves.push(move);
       }
@@ -74,7 +107,58 @@ export abstract class Piece {
     return validMoves;
   }
 
-  protected abstract availableMoves(boardPosition: Array<Tile>, boardFlipped: boolean): Array<Position>;
+  private filterOutMovesThatPutKingInCheck(boardPosition: Array<Tile>, moves: Array<Position>) {
+    const legalMoves = new Array<Position>();
+    for (const move of moves) {
+      let legalMove = true;
+
+      // a move puts the king in check when on the opponent's next turn they could capture it
+      const opponentsPosition = PositionUtil.cloneBoard(boardPosition);
+
+      // make the move to achieve opponents pos
+      PositionUtil.getTileAt(opponentsPosition, this.position).setPiece(null);
+      PositionUtil.getTileAt(opponentsPosition, move).setPiece(this.getClone());
+
+      for (let i = 32; i >= 1; i--)
+      {
+        const top = opponentsPosition[Math.abs(i-32)];
+        const bottom = opponentsPosition[i+32-1];
+
+        const topPiece = top.getPiece();
+        const bottomPiece = bottom.getPiece();
+
+        top.setPiece(bottomPiece);
+        bottom.setPiece(topPiece);
+      }
+
+      // Now check if any of the available moves of any of the oppenents pieces could potentially capture
+      // the king
+
+      for (const tile of opponentsPosition) {
+        if (tile.getPiece() == null || tile.getPiece().getColor() == this.color) continue;
+
+        const piece = tile.getPiece();
+
+        const availableMovesForOpponent = piece.availableMoves(opponentsPosition);
+        for (const availableMoveForOppponent of availableMovesForOpponent) {
+          const capturablePiece = PositionUtil.getTileAt(opponentsPosition, availableMoveForOppponent).getPiece();
+
+          if (capturablePiece != null && capturablePiece.getType() == PieceType.KING && capturablePiece.getColor() == this.color) {
+
+            // This move is considered illegal because it would put the king in check
+            legalMove = false;
+            break;
+          }
+        }
+        if (!legalMove) break;
+      }
+      // Move passed all checks and is legal
+      if (legalMove) legalMoves.push(move);
+    }
+    return legalMoves;
+  }
+
+  protected abstract availableMoves(boardPosition: Array<Tile>): Array<Position>;
 
   public getPosition(): Position {
     return this.position;

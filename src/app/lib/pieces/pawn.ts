@@ -27,7 +27,7 @@ export class Pawn extends Piece {
     }
   }
 
-  protected availableMoves(boardPosition: Tile[], boardFlipped: boolean): Array<Position> {
+  protected availableMoves(boardPosition: Tile[]): Array<Position> {
     const moves = new Array<Position>();
 
     if (this.firstMoveTaken())
@@ -93,5 +93,15 @@ export class Pawn extends Piece {
 
   protected enPassantNowAllowed() {
     this._enPassantAllowed = true;
+  }
+
+  public getClone(): Piece {
+    const clone = new Pawn(this.color);
+    clone.setPosition(this.getPosition());
+    clone._firstMoveTaken = this._firstMoveTaken;
+    this._enPassantAllowed = this._enPassantAllowed;
+    clone.moves = this.moves;
+    clone._captured = this._captured
+    return clone;
   }
 }

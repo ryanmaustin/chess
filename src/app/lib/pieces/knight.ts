@@ -8,7 +8,7 @@ export class Knight extends Piece {
     super(PieceType.KNIGHT, color);
   }
 
-  protected availableMoves(boardPosition: Tile[], boardFlipped: boolean): Array<Position> {
+  protected availableMoves(boardPosition: Tile[]): Array<Position> {
     const moves = new Array<Position>();
 
     const potentialMoves = [
@@ -33,5 +33,13 @@ export class Knight extends Piece {
     }
 
     return moves;
+  }
+
+  public getClone(): Piece {
+    const clone = new Knight(this.color);
+    clone.setPosition(this.getPosition());
+    clone.moves = this.moves;
+    clone._captured = this._captured
+    return clone;
   }
 }

@@ -1,8 +1,8 @@
 <div class="main h-100 w-100">
 
-  <div class="h-100 w-100 board-container">
+  <div class="h-100 w-100 board-container d-flex flex-column">
 
-    <div class="m-auto rounded board align-self-center p-1 d-flex flex-column">
+    <div class="ml-auto mt-auto mr-auto mb-1 rounded board align-self-center p-1 d-flex flex-column">
 
       <div class="rank d-flex flex-row" *ngFor="let rank of this.board.ranks(); let index = index">
         <div class="tile" *ngFor="let tile of rank" [style.background-color]="tile.isBlack() ? '#6a7486' : 'white'">
@@ -19,6 +19,37 @@
 
     </div>
 
+    <div class="rounded board-options mb-auto pl-3 pr-3 d-flex flex-row">
+
+
+      <div class="ml-auto mr-3">Play as:</div>
+      <div class="board-option">
+        <mat-radio-group class="board-option">
+          <mat-radio-button value="White" [checked]="this.playAsWhite" (change)="this.changePlayAsColor()">White</mat-radio-button>
+          <mat-radio-button [checked]="!this.playAsWhite" value="Black" class="ml-3" (change)="this.changePlayAsColor()">Black</mat-radio-button>
+        </mat-radio-group>
+      </div>
+
+      <div class="options-divider"></div>
+
+      <div class="board-option">
+        <mat-checkbox color="white" [(ngModel)]="this.computerOn" class="board-option">Against Computer</mat-checkbox>
+      </div>
+
+      <div class="options-divider"></div>
+
+      <div id="playButton" class="ml-auto mr-auto btn btn-secondary" *ngIf="!this.gameOn" (click)="this.startGame()">
+        Play
+      </div>
+
+      <div id="playButton" class="ml-auto mr-auto btn btn-secondary" *ngIf="this.gameOn" (click)="this.startGame()">
+        Reset
+      </div>
+    </div>
+
+    <div class="mt-auto"></div>
+
   </div>
+
 
 </div>

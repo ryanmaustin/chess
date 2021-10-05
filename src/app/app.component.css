@@ -16,6 +16,39 @@
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
 }
 
+.board-options {
+  position: fixed;
+  background-color: #6a93cb;
+  background-image: linear-gradient(315deg, #6a93cb 0%, #a4bfef 74%);
+  height: 45px;
+  width: 55vh;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+  align-items: center;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.board-option {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+::ng-deep .mat-radio-label {
+  margin-bottom: 0 !important;
+}
+
+::ng-deep label {
+  margin-bottom: 0 !important;
+}
+
+.options-divider {
+  height: 65%;
+  border-right: 2px solid rgba(94, 71, 116, 0.3);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .rank {
   display: flex;
   align-items: center;
@@ -52,21 +85,6 @@
   filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.8));
 }
 
-/* .available-move {
-  position: relative;
-
-  height: 100%;
-  width: 100%;
-  line-height: 100%;
-  margin: 0;
-
-  font-size: 30pt;
-  color: #9597a3;
-  z-index: 150;
-  text-align: center;
-} */
-
-
 .available-move {
   box-shadow: inset 0px 0px 2px 4px rgb(162, 159, 211);
 }
@@ -76,4 +94,19 @@
   height: 100%;
   width: 100%;
   cursor: pointer;
+}
+
+#playButton {
+  background-color: #734ae8;
+  background-image: linear-gradient(315deg, #734ae8 0%, #9b6db1 74%);
+  height: 30px;
+  line-height: 30px;
+  margin-top: -3px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  border: none;
+  filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.65));
+  font-size: 10pt;
 }
