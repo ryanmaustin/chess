@@ -1,0 +1,112 @@
+.main {
+  background-color: #b3cdd1;
+  background-image: linear-gradient(315deg, #b3cdd1 0%, #9fa4c4 74%);
+}
+
+.board-container {
+  display: flex;
+  align-items: center;
+}
+
+.board {
+  background-color: #b1bfd8;
+  background-image: linear-gradient(315deg, #b1bfd8 0%, #6782b4 74%);
+  height: 45vh;
+  width: 45vh;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+}
+
+.board-options {
+  position: fixed;
+  background-color: #6a93cb;
+  background-image: linear-gradient(315deg, #6a93cb 0%, #a4bfef 74%);
+  height: 45px;
+  width: 55vh;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+  align-items: center;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.board-option {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+::ng-deep .mat-radio-label {
+  margin-bottom: 0 !important;
+}
+
+::ng-deep label {
+  margin-bottom: 0 !important;
+}
+
+.options-divider {
+  height: 65%;
+  border-right: 2px solid rgba(94, 71, 116, 0.3);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+
+  min-height: 12.5%;
+  min-width: 12.5%;
+}
+
+.tile {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.piece-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  z-index: 100;
+}
+
+.piece {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+  max-height: 80%;
+  max-width: 75%;
+  cursor: pointer;
+}
+
+.piece:hover {
+  filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.8));
+}
+
+.available-move {
+  box-shadow: inset 0px 0px 2px 4px rgb(162, 159, 211);
+}
+
+.make-move {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+}
+
+#playButton {
+  background-color: #734ae8;
+  background-image: linear-gradient(315deg, #734ae8 0%, #9b6db1 74%);
+  height: 30px;
+  line-height: 30px;
+  margin-top: -3px;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  border: none;
+  filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.65));
+  font-size: 10pt;
+}
