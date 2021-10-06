@@ -2,15 +2,39 @@
 
   <div class="h-100 w-100 board-container d-flex flex-column">
 
-    <div class="ml-auto mt-auto mr-auto mb-1 rounded board align-self-center p-1 d-flex flex-column">
+    <div id="board" cdkDropListGroup class="ml-auto mt-auto mr-auto mb-1 rounded board align-self-center p-1 d-flex flex-column">
+
+      <div class="piece" draggable="true" *ngFor="let piece of this.getBlackPieces()"
+      cdkDrag
+      cdkDragBoundary=".board"
+      (cdkDragStarted)="this.dragStart($event, piece)"
+      (cdkDragEnded)="this.dragEnd($event, piece)"
+      [style.left.px]="this.getPosX(piece.getPosition())"
+      [style.top.px]="piece.dragging ? '-1000' : this.getPosY(piece.getPosition())">
+        <img *ngIf="!piece.isCaptured() && piece.dragging" class="piece-img" [src]="piece.getImageUrl()" (click)="this.selectPiece(piece)">
+        <img *ngIf="!piece.isCaptured() && !piece.dragging" class="piece-img" [src]="piece.getImageUrl()">
+      </div>
+
+      <div class="piece" cdkDrag *ngFor="let piece of this.getWhitePieces()"
+      cdkDrag
+      cdkDragBoundary=".board"
+      (cdkDragStarted)="this.dragStart($event, piece)"
+      (cdkDragEnded)="this.dragEnd($event, piece)"
+      [style.left.px]="this.getPosX(piece.getPosition())"
+      [style.top.px]="this.getPosY(piece.getPosition())"
+      (click)="this.selectPiece(piece)">
+        <img *ngIf="!piece.isCaptured()" class="piece-img" [src]="piece.getImageUrl()" >
+      </div>
 
       <div class="rank d-flex flex-row" *ngFor="let rank of this.board.ranks(); let index = index">
-        <div class="tile" *ngFor="let tile of rank" [style.background-color]="tile.isBlack() ? '#6a7486' : 'white'">
+        <div [id]="tile.getPosition().x + '-' + tile.getPosition().y"
+        (mouseover)="this.currentTile = tile"
+        class="tile" *ngFor="let tile of rank"
+        [style.background-color]="tile.isBlack() ? '#6a7486' : 'white'">
 
-
-          <div class="piece-container" [class.available-move]="this.isAvailableMove(tile)">
-            <img class="piece" *ngIf="tile.getPiece() != null" [src]="tile.getPieceImageUrl()" (click)="this.selectPiece(tile.getPiece())">
-            <div class="make-move" *ngIf="this.isAvailableMove(tile)" (click)="makeMove(tile)">
+          <div class="move-container" *ngIf="this.isAvailableMove(tile)">
+            <div class="make-move glow-purple" (click)="makeMove(tile)">
+              •
             </div>
           </div>
 

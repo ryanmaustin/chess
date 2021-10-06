@@ -6,6 +6,7 @@ import { Piece, PieceColor } from './lib/pieces/piece';
 import { PositionUtil } from './lib/board/position-util';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
 
 export interface Checkmate {
   winner: PieceColor
@@ -33,6 +34,8 @@ export class AppComponent implements OnInit {
 
   public gameOn: boolean = false;
 
+  private lastMove: Date = new Date();
+
   constructor(public dialog: MatDialog)
   {
     this.checkmate$ = new BehaviorSubject<Checkmate>(null);
@@ -54,7 +57,9 @@ export class AppComponent implements OnInit {
 
   public selectPiece(piece: Piece)
   {
+    if (new Date().getTime() - this.lastMove.getTime() < 500) return;
     if (!this.gameOn) return;
+    if (piece.getColor() != this.board.getTurn()) return;
     this.selected = piece;
     this.availableMoves = this.board.prepareToMovePiece(this.selected);
     console.log("Avail", this.availableMoves);
@@ -70,6 +75,8 @@ export class AppComponent implements OnInit {
   }
 
   public makeMove(tile: Tile) {
+    this.lastMove = new Date();
+
     const moveFinished$ = new Subject<boolean>();
     moveFinished$.subscribe(
       () => {
@@ -135,10 +142,65 @@ export class AppComponent implements OnInit {
     if (this.computerOn && !this.playAsWhite) {
       this.makeComputerMove();
     }
-
   }
-}
 
+  public dragStart(event: CdkDragStart, piece: Piece) {
+    piece.dragging = true;
+    event.source.element.nativeElement.style.zIndex = '10002';
+    this.selectPiece(piece);
+  }
+
+  public dragEnd(event: CdkDragEnd, piece: Piece) {
+    event.source.element.nativeElement.style.zIndex = '10000';
+    piece.dragging = false;
+
+    const deltaX = Math.round(Math.abs(event.distance.x / this.getTileWidth()));
+    const signX = event.distance.x > 0 ? 1 : event.distance.x == 0 ? 0 : -1;
+    const deltaY = Math.round(Math.abs(event.distance.y / this.getTileHeight()));
+    const signY = event.distance.y > 0 ? -1 : event.distance.y == 0 ? 0 : 1;
+
+    const tile = <Position> { x: piece.getPosition().x + (signX * deltaX), y: piece.getPosition().y + (signY * deltaY) };
+
+    for (const availableMove of this.availableMoves) {
+      if (availableMove.x == tile.x && availableMove.y == tile.y) {
+        this.makeMove(PositionUtil.getTileAt(this.board.getTiles(), availableMove));
+      }
+    }
+
+    event.source._dragRef.reset();
+  }
+
+  private getTileHeight() {
+    return document.getElementById('1-1').getBoundingClientRect().height;
+  }
+
+  private getTileWidth() {
+    return document.getElementById('1-1').getBoundingClientRect().width;
+  }
+
+
+  public getBlackPieces(): Array<Piece> {
+    return this.board.getPieces(PieceColor.BLACK);
+  }
+
+  public getWhitePieces(): Array<Piece> {
+    return this.board.getPieces(PieceColor.WHITE);
+  }
+
+  public getPosX(position: Position): number {
+    const board = document.getElementById('board');
+    const tile = document.getElementById(position.x + '-' + position.y);
+    const x = tile.offsetLeft;
+    return x;
+  }
+
+  public getPosY(position: Position): number {
+    const tile = document.getElementById(position.x + '-' + position.y);
+    const y = tile.offsetTop;
+    return y;
+  }
+
+}
 
 @Component({
   selector: 'checkmate-dialog',

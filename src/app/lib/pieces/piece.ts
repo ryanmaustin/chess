@@ -18,6 +18,8 @@ export enum PieceColor {
 
 export abstract class Piece {
 
+  public dragging: boolean = false;
+
   protected _captured: boolean = false;
   protected moves: number = 0;
   protected type: PieceType;
@@ -162,6 +164,19 @@ export abstract class Piece {
 
   public getPosition(): Position {
     return this.position;
+  }
+
+  public getImageUrl(): string
+  {
+    return `assets/${this.isBlack() ? 'b' : 'w'}${PieceImgMap.get(this.getType())}`;
+  }
+
+  public getId(): string {
+    return this.type + "-" + this.position.x + "-" + this.position.y;
+  }
+
+  public isCaptured(): boolean {
+    return this._captured;
   }
 }
 
