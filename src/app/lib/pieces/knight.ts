@@ -1,6 +1,5 @@
 import { Position } from "../board/position";
-import { Tile } from "../board/tile";
-import { Piece, PieceColor, PieceType } from "./piece";
+import { Piece, PieceColor, PieceType, Tile } from "../board/chess";
 
 export class Knight extends Piece {
 

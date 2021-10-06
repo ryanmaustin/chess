@@ -1,16 +1,13 @@
 import { Pawn } from "../pieces/pawn";
-import { Tile } from "./tile";
 import { Rank } from "./rank";
-import { Piece, PieceColor, PieceType } from "../pieces/piece";
+import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "./chess";
 import { Rook } from "../pieces/rook";
 import { Knight } from "../pieces/knight";
 import { Bishop } from "../pieces/bishop";
 import { Queen } from "../pieces/queen";
 import { King } from "../pieces/king";
 import { Position } from "./position";
-import { PositionUtil } from "./position-util";
 import { BehaviorSubject, Subject } from "rxjs";
-import { Checkmate } from "src/app/app.component";
 
 export class Board {
   private tiles: Array<Tile>;
@@ -25,7 +22,7 @@ export class Board {
   private enPassantAvailable = new BehaviorSubject<boolean>(false);
 
 
-  constructor(private checkmate$: BehaviorSubject<Checkmate>)
+  constructor(private checkmate$: BehaviorSubject<Mate>)
   {
     this.initTiles();
 
@@ -177,8 +174,27 @@ export class Board {
 
     if (availMoves.length == 0) {
       PositionUtil.flipBoard(this.tiles);
-      this.checkmate$.next({ winner: winner });
+      this.checkmate$.next(
+        this.kingIsCapturableBy(winner) ?
+        { winner: winner, checkmate: true } :
+        { winner: null, checkmate: false }
+      );
     }
+  }
+
+  private kingIsCapturableBy(color: PieceColor): boolean {
+    const attackersPieces = this.getPieces(color);
+    console.warn(`Determining check or stale mate... Can ${color} capture the king?`, attackersPieces);
+    for (const attackersPiece of attackersPieces) {
+      for (const move of attackersPiece.getAvailableMoves(this.tiles)) {
+        const tile = PositionUtil.getTileAt(this.tiles, move);
+        console.log("Checking tile for checkmate", tile);
+        if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private handleCastle(king: King, currentTile: Tile, destinationTile: Tile) {
@@ -264,4 +280,9 @@ export class Board {
     return this.turn;
   }
 
+}
+
+export interface Mate {
+  winner: PieceColor,
+  checkmate: boolean
 }

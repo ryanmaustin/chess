@@ -1,8 +1,6 @@
 import { BehaviorSubject } from "rxjs";
 import { Position } from "../board/position";
-import { PositionUtil } from "../board/position-util";
-import { Tile } from "../board/tile";
-import { Piece, PieceColor, PieceType } from "./piece";
+import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "../board/chess";
 
 export class Pawn extends Piece {
 
