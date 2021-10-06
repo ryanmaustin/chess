@@ -10,9 +10,9 @@
       (cdkDragStarted)="this.dragStart($event, piece)"
       (cdkDragEnded)="this.dragEnd($event, piece)"
       [style.left.px]="this.getPosX(piece.getPosition())"
-      [style.top.px]="piece.dragging ? '-1000' : this.getPosY(piece.getPosition())">
-        <img *ngIf="!piece.isCaptured() && piece.dragging" class="piece-img" [src]="piece.getImageUrl()" (click)="this.selectPiece(piece)">
-        <img *ngIf="!piece.isCaptured() && !piece.dragging" class="piece-img" [src]="piece.getImageUrl()">
+      [style.top.px]="this.getPosY(piece.getPosition())"
+      (click)="this.selectPiece(piece)">
+        <img *ngIf="!piece.isCaptured()" class="piece-img" [src]="piece.getImageUrl()" [style.max-height.px]="this.getTileHeight()">
       </div>
 
       <div class="piece" cdkDrag *ngFor="let piece of this.getWhitePieces()"
@@ -23,7 +23,7 @@
       [style.left.px]="this.getPosX(piece.getPosition())"
       [style.top.px]="this.getPosY(piece.getPosition())"
       (click)="this.selectPiece(piece)">
-        <img *ngIf="!piece.isCaptured()" class="piece-img" [src]="piece.getImageUrl()" >
+        <img *ngIf="!piece.isCaptured()" class="piece-img" [src]="piece.getImageUrl()" [style.max-height.px]="this.getTileHeight()">
       </div>
 
       <div class="rank d-flex flex-row" *ngFor="let rank of this.board.ranks(); let index = index">

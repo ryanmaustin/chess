@@ -170,11 +170,11 @@ export class AppComponent implements OnInit {
     event.source._dragRef.reset();
   }
 
-  private getTileHeight() {
+  public getTileHeight() {
     return document.getElementById('1-1').getBoundingClientRect().height;
   }
 
-  private getTileWidth() {
+  public getTileWidth() {
     return document.getElementById('1-1').getBoundingClientRect().width;
   }
 
