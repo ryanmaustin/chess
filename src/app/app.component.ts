@@ -1,16 +1,11 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { Board } from './lib/board/board';
+import { Board, Mate } from './lib/board/board';
 import { Position } from './lib/board/position';
-import { Tile } from './lib/board/tile';
-import { Piece, PieceColor } from './lib/pieces/piece';
-import { PositionUtil } from './lib/board/position-util';
+import { Piece, PieceColor, PositionUtil, Tile } from './lib/board/chess';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { CdkDragEnd, CdkDragStart } from '@angular/cdk/drag-drop';
-
-export interface Checkmate {
-  winner: PieceColor
-}
+import { startCase } from 'lodash';
 
 @Component({
   selector: 'app-root',
@@ -30,7 +25,7 @@ export class AppComponent implements OnInit {
 
   public computerOn: boolean = true;
 
-  public checkmate$: BehaviorSubject<Checkmate>;
+  public mate$: BehaviorSubject<Mate>;
 
   public gameOn: boolean = false;
 
@@ -38,18 +33,18 @@ export class AppComponent implements OnInit {
 
   constructor(public dialog: MatDialog)
   {
-    this.checkmate$ = new BehaviorSubject<Checkmate>(null);
-    this.board = new Board(this.checkmate$);
+    this.mate$ = new BehaviorSubject<Mate>(null);
+    this.board = new Board(this.mate$);
     this.availableMoves = [];
   }
 
   public ngOnInit()
   {
-    this.checkmate$.subscribe(
-      (checkmate) => {
-        if (checkmate) {
+    this.mate$.subscribe(
+      (mate) => {
+        if (mate) {
           this.gameOn = false;
-          this.dialog.open(CheckmateDialog, { width: '250px', data: checkmate });
+          this.dialog.open(CheckmateDialog, { width: '250px', data: mate });
         }
       }
     );
@@ -203,10 +198,10 @@ export class AppComponent implements OnInit {
 }
 
 @Component({
-  selector: 'checkmate-dialog',
+  selector: 'mate-dialog',
   template: `
 
-    <div>Checkmate! {{ this.data.winner }} Wins!</div>
+    <div >{{ this.data.checkmate ? "Checkmate! " + this.format(this.data.winner) + " Wins!" : "Stalemate!" }} </div>
 
   `,
 })
@@ -214,10 +209,14 @@ export class CheckmateDialog {
 
   constructor(
     public dialogRef: MatDialogRef<CheckmateDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: Checkmate) {}
+    @Inject(MAT_DIALOG_DATA) public data: Mate) {}
 
   onNoClick(): void {
     this.dialogRef.close();
+  }
+
+  public format(str: string): string {
+    return startCase(str.toLowerCase());
   }
 
 }
