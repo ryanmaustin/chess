@@ -15,9 +15,6 @@ export enum PieceColor {
 }
 
 export abstract class Piece {
-
-  public dragging: boolean = false;
-
   protected _captured: boolean = false;
   protected moves: number = 0;
   protected type: PieceType;
@@ -207,12 +204,9 @@ export class PositionUtil {
 
   public static getAvailableMoves(tiles: Array<Tile>, piece: Piece): Array<Position> {
     const moves = new Array<Position>();
-    const currentPosition = this.getPosition(tiles, piece);
-
     for (const move of piece.getAvailableMoves(tiles))
       moves.push(move);
 
-    console.log("Moves for " + piece.getColor() + " " +  piece.getType() + " [" + currentPosition.x + ","  + currentPosition.y + "] are ", moves)
     return moves;
   }
 

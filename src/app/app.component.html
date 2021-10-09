@@ -1,13 +1,31 @@
-<div class="main h-100 w-100">
+  <div class="main h-100 w-100">
 
   <div class="h-100 w-100 board-container d-flex flex-column">
 
-    <div id="board" cdkDropListGroup class="ml-auto mt-auto mr-auto mb-1 rounded board align-self-center p-1 d-flex flex-column">
+    <div id="moves" class="rounded ml-auto mb-1 mt-auto mr-auto align-self-center p-3 d-flex flex-row">
+
+      <div id="moveHistory" class="d-flex flex-row flex-no-wrap flex-grow-1">
+        <p class="ml-1 mr-1" *ngFor="let move of this.getCurrentGame()"> {{ move.pgnMove }} </p>
+      </div>
+
+      <form class="flex-grow-1 d-flex flex-row h-100" style="font-size: 8.5pt;">
+        <mat-form-field class="example-full-width" class="flex-grow-1" appearance="fill">
+          <mat-label>Chess Notation Moves</mat-label>
+          <input matInput [(ngModel)]="this.pgn" name="pgn">
+        </mat-form-field>
+
+        <button mat-raised-button color="primary" class="ml-2" (click)="this.setBoardFromInsertedMoves()">Go</button>
+      </form>
+
+    </div>
+
+    <div id="board" cdkDropListGroup class="ml-auto mt-1 mr-auto mb-1 rounded board align-self-center p-1 d-flex flex-column">
 
       <div class="piece" draggable="true" *ngFor="let piece of this.getBlackPieces()"
       cdkDrag
       cdkDragBoundary=".board"
       (cdkDragStarted)="this.dragStart($event, piece)"
+      (cdkDragMoved)="this.drag($event, piece)"
       (cdkDragEnded)="this.dragEnd($event, piece)"
       [style.left.px]="this.getPosX(piece.getPosition())"
       [style.top.px]="this.getPosY(piece.getPosition())"
@@ -19,6 +37,7 @@
       cdkDrag
       cdkDragBoundary=".board"
       (cdkDragStarted)="this.dragStart($event, piece)"
+      (cdkDragMoved)="this.drag($event, piece)"
       (cdkDragEnded)="this.dragEnd($event, piece)"
       [style.left.px]="this.getPosX(piece.getPosition())"
       [style.top.px]="this.getPosY(piece.getPosition())"
@@ -26,14 +45,16 @@
         <img *ngIf="!piece.isCaptured()" class="piece-img" [src]="piece.getImageUrl()" [style.max-height.px]="this.getTileHeight()">
       </div>
 
-      <div class="rank d-flex flex-row" *ngFor="let rank of this.board.ranks(); let index = index">
+      <div class="rank d-flex flex-row" *ngFor="let rank of this.board.ranks; let index = index">
         <div [id]="tile.getPosition().x + '-' + tile.getPosition().y"
-        (mouseover)="this.currentTile = tile"
         class="tile" *ngFor="let tile of rank"
-        [style.background-color]="tile.isBlack() ? '#6a7486' : 'white'">
+        [class.black-tile]="tile.isBlack()"
+        [class.white-tile]="!tile.isBlack()"
+        [class.tile-drag-over]="tile.hover"
+        >
 
           <div class="move-container" *ngIf="this.isAvailableMove(tile)">
-            <div class="make-move glow-purple" (click)="makeMove(tile)">
+            <div class="make-move glow-purple" (click)="makeMove(tile.getPosition())">
               •
             </div>
           </div>
@@ -62,8 +83,8 @@
 
       <div class="options-divider"></div>
 
-      <div id="playButton" class="ml-auto mr-auto btn btn-secondary" *ngIf="!this.gameOn" (click)="this.startGame()">
-        Play
+      <div id="playButton" *ngIf="!this.gameOn" (click)="this.startGame()">
+        <button mat-raised-button color="primary">Play</button>
       </div>
 
       <div id="playButton" class="ml-auto mr-auto btn btn-secondary" *ngIf="this.gameOn" (click)="this.startGame()">

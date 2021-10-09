@@ -19,7 +19,6 @@ export class Pawn extends Piece {
     this._firstMoveTaken = true;
 
     if ((movedTo.y - origPos.y) == 2) {
-      console.warn("En Passant allowed!");
       this.enPassantNowAllowed();
       enPassantAvailable.next(true);
     }
@@ -28,15 +27,15 @@ export class Pawn extends Piece {
   protected availableMoves(boardPosition: Tile[]): Array<Position> {
     const moves = new Array<Position>();
 
+    const forward1 = { x: this.position.x, y: this.position.y + 1 }
     if (this.firstMoveTaken())
     {
       const forward2 = { x: this.position.x, y: this.position.y + 2 };
-      if (PositionUtil.getTileAt(boardPosition, forward2).getPiece() == null)
+      if (PositionUtil.getTileAt(boardPosition, forward1).getPiece() == null && PositionUtil.getTileAt(boardPosition, forward2).getPiece() == null)
       {
         moves.push(forward2);
       }
     }
-    const forward1 = { x: this.position.x, y: this.position.y + 1 }
     if (PositionUtil.getTileAt(boardPosition, forward1).getPiece() == null) {
       moves.push(forward1);
     }

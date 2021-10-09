@@ -24,6 +24,7 @@
     "@angular/router": "~10.2.4",
     "@ng-bootstrap/ng-bootstrap": "^8.0.4",
     "bootstrap": "^4.6.0",
+    "cm-pgn": "^2.1.5",
     "jquery": "^3.6.0",
     "lodash": "^4.17.21",
     "ngx-drag-drop": "^2.0.0",

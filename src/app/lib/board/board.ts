@@ -9,7 +9,97 @@ import { King } from "../pieces/king";
 import { Position } from "./position";
 import { BehaviorSubject, Subject } from "rxjs";
 
+export interface Move {
+  pgnMove: string
+}
+
+export interface PGN {
+  header: any,
+  history: PGNHistory
+}
+
+export interface PGNHistory {
+  moves: Array<PGNMove>
+}
+
+export interface PGNMove {
+ color: 'w' | 'b',
+ from: string,
+ to: string,
+ flags: string,
+ promotion: string;
+}
+
+/**
+ * Maps Pieces to their PGN equivalent
+ */
+export class PGNPieceMap {
+
+  readonly pieceMap = new Map<PieceType, string>();
+
+  constructor() {
+    this.pieceMap.set(PieceType.BISHOP, "B");
+    this.pieceMap.set(PieceType.KING, "K");
+    this.pieceMap.set(PieceType.ROOK, "R");
+    this.pieceMap.set(PieceType.PAWN, "");
+    this.pieceMap.set(PieceType.QUEEN, "Q");
+    this.pieceMap.set(PieceType.KNIGHT, "N");
+  }
+
+  public static get(type: PieceType) {
+    return new PGNPieceMap().pieceMap.get(type);
+  }
+
+  public static toPieceType(pgnPiece: string): PieceType {
+    for (const p of new PGNPieceMap().pieceMap.entries()) {
+      if (p[1] == pgnPiece.toUpperCase()) {
+        return p[0];
+      }
+    }
+    throw Error("No Piece Type Mapped for " + pgnPiece);
+  }
+
+}
+
+/**
+ * Maps moves on this Chess board to a PGN style notation
+ */
+export class PGNMoveMap {
+
+  static xMap = [ '', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+  public static get(position: Position, color: PieceColor): string {
+    let move = '';
+    if (color == PieceColor.WHITE) {
+      move = String(this.xMap[position.x]) + String(position.y.toFixed(0));
+    }
+    else { // invert both x and y
+      move = String(this.xMap[ Math.abs(position.x - 9) ]) + String( Math.abs(position.y - 9).toFixed(0) );
+    }
+    return move;
+  }
+}
+
+/**
+ * Maps this Chess structure to the PGN standard
+ */
+export class PGNMapper {
+
+  public static get(type: PieceType, color: PieceColor, current: Position, target: Position, capture: boolean): string {
+    let pgn =
+      (capture && type ==  PieceType.PAWN ? PGNMoveMap.get(current, color)[0] : '') +
+      PGNPieceMap.get(type) +
+      (capture ? 'x' : '') +
+      PGNMoveMap.get(target, color);
+    return pgn;
+  }
+
+}
+
 export class Board {
+
+  public ranks: Array<Rank>;
+
   private tiles: Array<Tile>;
 
   private flipped: boolean = false;
@@ -38,6 +128,8 @@ export class Board {
         }
       }
     );
+
+    this.initRanks();
   }
 
   public initTiles()
@@ -55,6 +147,7 @@ export class Board {
   public setup()
   {
     this.initTiles();
+
     this.whitePieces = new Array<Piece>();
     this.blackPieces = new Array<Piece>();
 
@@ -92,14 +185,13 @@ export class Board {
     this.turn = PieceColor.WHITE;
   }
 
-  public ranks(): Array<Rank>
+  public initRanks()
   {
-    const ranks = new Array<Rank>();
+    this.ranks = new Array<Rank>();
     for (let i = 0; i < 8; i++)
     {
-      ranks[i] = this.tiles.slice(i*8, (i*8)+8);
+      this.ranks[i] = this.tiles.slice(i*8, (i*8)+8);
     }
-    return ranks;
   }
 
   public getTiles(): Array<Tile> {
@@ -114,33 +206,46 @@ export class Board {
   {
     if (piece.getColor() != this.turn) return []; // not this color's turn
 
-    const position = PositionUtil.getPosition(this.getTiles(), piece);
-    console.log("Selected " + piece.getColor() + " " + piece.getType() + " [" + position.x + "," + position.y + "]");
     return PositionUtil.getAvailableMoves(this.getTiles(), piece);
   }
 
-  public movePiece(piece: Piece, tile: Tile, moveFinished$ ?: Subject<boolean>) {
+  /**
+   * Returns the PGN move notation
+   */
+  public movePiece(piece: Piece, tile: Tile, moveFinished$ ?: Subject<Move>, promotionChoice ?: PieceType) {
     let p = piece;
     this.disallowEnPassant();
 
     const currentTile = PositionUtil.getTileAt(this.tiles, p.getPosition());
-    const origPos = { x: piece.getPosition().x, y: p.getPosition().y };
+    const origPos = p.getPosition();
+    const capturingPiece = tile.getPiece() != null;
+
+    let pgnMove = PGNMapper.get(piece.getType(), piece.getColor(), origPos, tile.getPosition(), capturingPiece);
 
     if (p.getType() == PieceType.PAWN) {
       const pawn = <Pawn> p;
       pawn.pawnMoved(origPos, tile.getPosition(), this.enPassantAvailable);
-      p = this.handlePawnPromotion(pawn, tile);
+      p = this.handlePawnPromotion(pawn, tile, promotionChoice);
+
+      // Add promotion notation to PGN move
+      if (p.getType() != PieceType.PAWN) {
+        pgnMove += '=' + PGNPieceMap.get(p.getType());
+      }
       this.handleEnPassant(pawn, tile);
     }
     else if (p.getType() == PieceType.KING) {
       const king = <King> p;
-      this.handleCastle(king, currentTile, tile);
+      let pgnCastle = this.handleCastle(king, currentTile, tile);
+      if (pgnCastle) {
+        pgnMove = pgnCastle;
+      }
     }
     // Piece is no longer here
     currentTile.setPiece(null);
 
     // Capture piece if any, then set tile
-    if (tile.getPiece() != null) {
+    if (capturingPiece) {
+      console.error(`${tile.getPiece().getColor()} ${tile.getPiece().getType()} was captured by ${piece.getColor()} ${piece.getType()} on [${tile.getPosition().x}, ${tile.getPosition().y}]`)
       tile.getPiece().captured();
     }
     tile.setPiece(p);
@@ -149,13 +254,15 @@ export class Board {
 
     this.switchTurn(p.getColor());
 
-    this.lookForCheckmate();
+    if (this.lookForCheckmate()) {
+      pgnMove += "#";
+    }
     if (moveFinished$) {
-      moveFinished$.next(true);
+      moveFinished$.next( { pgnMove: pgnMove } );
     }
   }
 
-  private lookForCheckmate() {
+  private lookForCheckmate(): boolean {
     let nextTurnPieces = new Array<Piece>();
     let winner = PieceColor.WHITE;
 
@@ -174,21 +281,20 @@ export class Board {
 
     if (availMoves.length == 0) {
       PositionUtil.flipBoard(this.tiles);
+      const checkmate = this.kingIsCapturableBy(winner);
       this.checkmate$.next(
-        this.kingIsCapturableBy(winner) ?
-        { winner: winner, checkmate: true } :
-        { winner: null, checkmate: false }
+        { winner: checkmate ? winner : null, checkmate: checkmate }
       );
+      return checkmate;
     }
+    return false;
   }
 
   private kingIsCapturableBy(color: PieceColor): boolean {
     const attackersPieces = this.getPieces(color);
-    console.warn(`Determining check or stale mate... Can ${color} capture the king?`, attackersPieces);
     for (const attackersPiece of attackersPieces) {
       for (const move of attackersPiece.getAvailableMoves(this.tiles)) {
         const tile = PositionUtil.getTileAt(this.tiles, move);
-        console.log("Checking tile for checkmate", tile);
         if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING) {
           return true;
         }
@@ -197,7 +303,7 @@ export class Board {
     return false;
   }
 
-  private handleCastle(king: King, currentTile: Tile, destinationTile: Tile) {
+  private handleCastle(king: King, currentTile: Tile, destinationTile: Tile): string{
     if (king.getMoves() != 0) return;
     let distance = destinationTile.getPosition().x - currentTile.getPosition().x;
 
@@ -209,18 +315,31 @@ export class Board {
         const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x - 1, y: 1 });
         destTile.setPiece(rookTile.getPiece());
         rookTile.setPiece(null);
+
+        return king.getColor() == PieceColor.BLACK ? 'O-O-O' : 'O-O';
       } else {
         const rookTile = PositionUtil.getTileAt(this.tiles, { x: 1, y: 1 });
         const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x + 1, y: 1 });
         destTile.setPiece(rookTile.getPiece());
         rookTile.setPiece(null);
+        return king.getColor() == PieceColor.BLACK ? 'O-O' : 'O-O-O';
       }
     }
+    return '';
   }
 
-  private handlePawnPromotion(pawn: Pawn, tile: Tile): Piece {
+  private handlePawnPromotion(pawn: Pawn, tile: Tile, promotionChoice: PieceType): Piece {
     if (tile.getPosition().y == 8) {
-      return new Queen(pawn.getColor());
+      pawn.captured();
+      const promotedPiece = Board.create(promotionChoice, pawn.getColor());
+
+      if (pawn.getColor() == PieceColor.BLACK) {
+        this.blackPieces.push(promotedPiece);
+      }
+      else {
+        this.whitePieces.push(promotedPiece);
+      }
+      return promotedPiece;
     }
     return pawn;
   }
@@ -234,13 +353,11 @@ export class Board {
       if ((tile.getPosition().y - pawn.getPosition().y) == 1) {
         // Remove pawn on the left
         if ((tile.getPosition().x - pawn.getPosition().x) == -1) {
-          console.warn("Handling En Passant!");
           PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x - 1, y: pawn.getPosition().y }).setPiece(null);
           return true;
         }
         // Remove pawn on the right
         else if ((tile.getPosition().x - pawn.getPosition().x) == 1) {
-          console.warn("Handling En Passant!");
           PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x + 1, y: pawn.getPosition().y }).setPiece(null);
           return true;
         }
@@ -278,6 +395,28 @@ export class Board {
 
   public getTurn(): PieceColor {
     return this.turn;
+  }
+
+  public static create(type: PieceType, color: PieceColor): Piece {
+    switch (type) {
+      case PieceType.PAWN:
+        return new Pawn(color);
+
+      case PieceType.BISHOP:
+        return new Bishop(color);
+
+      case PieceType.KING:
+        return new King(color);
+
+      case PieceType.QUEEN:
+        return new Queen(color);
+
+      case PieceType.ROOK:
+        return new Rook(color);
+
+      case PieceType.KNIGHT:
+        return new Knight(color);
+    }
   }
 
 }
