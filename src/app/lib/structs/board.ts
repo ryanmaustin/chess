@@ -1,99 +1,18 @@
-import { Pawn } from "../pieces/pawn";
+import { Pawn } from "./pieces/pawn";
 import { Rank } from "./rank";
 import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "./chess";
-import { Rook } from "../pieces/rook";
-import { Knight } from "../pieces/knight";
-import { Bishop } from "../pieces/bishop";
-import { Queen } from "../pieces/queen";
-import { King } from "../pieces/king";
+import { Rook } from "./pieces/rook";
+import { Knight } from "./pieces/knight";
+import { Bishop } from "./pieces/bishop";
+import { Queen } from "./pieces/queen";
+import { King } from "./pieces/king";
 import { Position } from "./position";
 import { BehaviorSubject, Subject } from "rxjs";
+import { PGNMapper, PGNPieceMap } from "../util/pgn-util";
 
 export interface Move {
-  pgnMove: string
-}
-
-export interface PGN {
-  header: any,
-  history: PGNHistory
-}
-
-export interface PGNHistory {
-  moves: Array<PGNMove>
-}
-
-export interface PGNMove {
- color: 'w' | 'b',
- from: string,
- to: string,
- flags: string,
- promotion: string;
-}
-
-/**
- * Maps Pieces to their PGN equivalent
- */
-export class PGNPieceMap {
-
-  readonly pieceMap = new Map<PieceType, string>();
-
-  constructor() {
-    this.pieceMap.set(PieceType.BISHOP, "B");
-    this.pieceMap.set(PieceType.KING, "K");
-    this.pieceMap.set(PieceType.ROOK, "R");
-    this.pieceMap.set(PieceType.PAWN, "");
-    this.pieceMap.set(PieceType.QUEEN, "Q");
-    this.pieceMap.set(PieceType.KNIGHT, "N");
-  }
-
-  public static get(type: PieceType) {
-    return new PGNPieceMap().pieceMap.get(type);
-  }
-
-  public static toPieceType(pgnPiece: string): PieceType {
-    for (const p of new PGNPieceMap().pieceMap.entries()) {
-      if (p[1] == pgnPiece.toUpperCase()) {
-        return p[0];
-      }
-    }
-    throw Error("No Piece Type Mapped for " + pgnPiece);
-  }
-
-}
-
-/**
- * Maps moves on this Chess board to a PGN style notation
- */
-export class PGNMoveMap {
-
-  static xMap = [ '', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-
-  public static get(position: Position, color: PieceColor): string {
-    let move = '';
-    if (color == PieceColor.WHITE) {
-      move = String(this.xMap[position.x]) + String(position.y.toFixed(0));
-    }
-    else { // invert both x and y
-      move = String(this.xMap[ Math.abs(position.x - 9) ]) + String( Math.abs(position.y - 9).toFixed(0) );
-    }
-    return move;
-  }
-}
-
-/**
- * Maps this Chess structure to the PGN standard
- */
-export class PGNMapper {
-
-  public static get(type: PieceType, color: PieceColor, current: Position, target: Position, capture: boolean): string {
-    let pgn =
-      (capture && type ==  PieceType.PAWN ? PGNMoveMap.get(current, color)[0] : '') +
-      PGNPieceMap.get(type) +
-      (capture ? 'x' : '') +
-      PGNMoveMap.get(target, color);
-    return pgn;
-  }
-
+  pgnMove: string,
+  gameover: boolean
 }
 
 export class Board {
@@ -101,18 +20,13 @@ export class Board {
   public ranks: Array<Rank>;
 
   private tiles: Array<Tile>;
-
   private flipped: boolean = false;
-
   private turn = PieceColor.WHITE;
-
   private whitePieces: Array<Piece>;
   private blackPieces: Array<Piece>;
-
   private enPassantAvailable = new BehaviorSubject<boolean>(false);
 
-
-  constructor(private checkmate$: BehaviorSubject<Mate>)
+  constructor(private mate$: BehaviorSubject<Mate>)
   {
     this.initTiles();
 
@@ -128,8 +42,6 @@ export class Board {
         }
       }
     );
-
-    this.initRanks();
   }
 
   public initTiles()
@@ -183,6 +95,7 @@ export class Board {
     for (let i = 63; i >= 48; i--) this.whitePieces.push(this.tiles[i].getPiece());
 
     this.turn = PieceColor.WHITE;
+    this.initRanks();
   }
 
   public initRanks()
@@ -194,59 +107,80 @@ export class Board {
     }
   }
 
-  public getTiles(): Array<Tile> {
+  public getTiles(): Array<Tile>
+  {
     return this.tiles;
   }
 
-  public isFlipped(): boolean {
+  public isFlipped(): boolean
+  {
     return this.flipped;
   }
 
-  public prepareToMovePiece(piece: Piece): Array<Position>
+  public getAvailableMoves(piece: Piece): Array<Position>
   {
     if (piece.getColor() != this.turn) return []; // not this color's turn
-
     return PositionUtil.getAvailableMoves(this.getTiles(), piece);
   }
 
   /**
-   * Returns the PGN move notation
+   * Moves the given piece to the given tile.
+   *
+   * Once the move has been completed a callback is sent via moveFinished if provided.
+   *
+   * Additionally, a promotion choice should provided in the case that this move would require one.
    */
-  public movePiece(piece: Piece, tile: Tile, moveFinished$ ?: Subject<Move>, promotionChoice ?: PieceType) {
+  public movePiece(piece: Piece, tile: Tile, moveFinished$ ?: Subject<Move>, promotionChoice ?: PieceType)
+  {
     let p = piece;
     this.disallowEnPassant();
 
     const currentTile = PositionUtil.getTileAt(this.tiles, p.getPosition());
     const origPos = p.getPosition();
-    const capturingPiece = tile.getPiece() != null;
+    let capturedPiece = tile.getPiece();
+    let pgnCastle = '';
+    let promotionPiece = null;
 
-    let pgnMove = PGNMapper.get(piece.getType(), piece.getColor(), origPos, tile.getPosition(), capturingPiece);
-
-    if (p.getType() == PieceType.PAWN) {
+    if (p.getType() == PieceType.PAWN)
+    {
       const pawn = <Pawn> p;
       pawn.pawnMoved(origPos, tile.getPosition(), this.enPassantAvailable);
-      p = this.handlePawnPromotion(pawn, tile, promotionChoice);
+      promotionPiece = this.handlePawnPromotion(pawn, tile, promotionChoice);
+      if (promotionPiece) p = promotionPiece;
 
-      // Add promotion notation to PGN move
-      if (p.getType() != PieceType.PAWN) {
-        pgnMove += '=' + PGNPieceMap.get(p.getType());
+      const capturedPawn = this.handleEnPassant(pawn, tile);
+      if (capturedPawn)
+      {
+        capturedPiece = capturedPawn;
       }
-      this.handleEnPassant(pawn, tile);
     }
-    else if (p.getType() == PieceType.KING) {
+    else if (p.getType() == PieceType.KING)
+    {
       const king = <King> p;
-      let pgnCastle = this.handleCastle(king, currentTile, tile);
-      if (pgnCastle) {
-        pgnMove = pgnCastle;
-      }
+      pgnCastle = this.handleCastle(king, currentTile, tile);
     }
+
+    // Resolve PGN Move
+    let pgnMove = PGNMapper.get(piece.getType(), piece.getColor(), origPos, tile.getPosition(), capturedPiece != null);
+    // Pawn promotion?
+    if (promotionPiece)
+    {
+      pgnMove += '=' + PGNPieceMap.get(p.getType());
+    }
+    // Castling?
+    else if (pgnCastle)
+    {
+      pgnMove = pgnCastle;
+    }
+
     // Piece is no longer here
     currentTile.setPiece(null);
 
     // Capture piece if any, then set tile
-    if (capturingPiece) {
-      console.error(`${tile.getPiece().getColor()} ${tile.getPiece().getType()} was captured by ${piece.getColor()} ${piece.getType()} on [${tile.getPosition().x}, ${tile.getPosition().y}]`)
-      tile.getPiece().captured();
+    if (capturedPiece)
+    {
+      console.error(`${capturedPiece.getColor()} ${capturedPiece.getType()} was captured by ${piece.getColor()} ${piece.getType()} on [${tile.getPosition().x}, ${tile.getPosition().y}]`)
+      capturedPiece.captured();
     }
     tile.setPiece(p);
 
@@ -254,12 +188,13 @@ export class Board {
 
     this.switchTurn(p.getColor());
 
-    if (this.lookForCheckmate()) {
-      pgnMove += "#";
+    let gameover = this.lookForCheckmate();
+    if (gameover) pgnMove += "#";
+    if (moveFinished$)
+    {
+      moveFinished$.next( { pgnMove: pgnMove, gameover: gameover } );
     }
-    if (moveFinished$) {
-      moveFinished$.next( { pgnMove: pgnMove } );
-    }
+
   }
 
   private lookForCheckmate(): boolean {
@@ -282,7 +217,7 @@ export class Board {
     if (availMoves.length == 0) {
       PositionUtil.flipBoard(this.tiles);
       const checkmate = this.kingIsCapturableBy(winner);
-      this.checkmate$.next(
+      this.mate$.next(
         { winner: checkmate ? winner : null, checkmate: checkmate }
       );
       return checkmate;
@@ -328,7 +263,8 @@ export class Board {
     return '';
   }
 
-  private handlePawnPromotion(pawn: Pawn, tile: Tile, promotionChoice: PieceType): Piece {
+  private handlePawnPromotion(pawn: Pawn, tile: Tile, promotionChoice: PieceType): Piece
+  {
     if (tile.getPosition().y == 8) {
       pawn.captured();
       const promotedPiece = Board.create(promotionChoice, pawn.getColor());
@@ -341,10 +277,11 @@ export class Board {
       }
       return promotedPiece;
     }
-    return pawn;
+    return null;
   }
 
-  private handleEnPassant(pawn: Pawn, tile: Tile): boolean {
+  private handleEnPassant(pawn: Pawn, tile: Tile): Piece
+  {
     // We know that we are capturing by en passant if the pawn is moving diagonally to
     // a tile with no piece
 
@@ -353,17 +290,21 @@ export class Board {
       if ((tile.getPosition().y - pawn.getPosition().y) == 1) {
         // Remove pawn on the left
         if ((tile.getPosition().x - pawn.getPosition().x) == -1) {
-          PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x - 1, y: pawn.getPosition().y }).setPiece(null);
-          return true;
+          const captureTile = PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x - 1, y: pawn.getPosition().y })
+          const capturedPawn = captureTile.getPiece();
+          captureTile.setPiece(null);
+          return capturedPawn;
         }
         // Remove pawn on the right
         else if ((tile.getPosition().x - pawn.getPosition().x) == 1) {
-          PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x + 1, y: pawn.getPosition().y }).setPiece(null);
-          return true;
+          const captureTile = PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x + 1, y: pawn.getPosition().y });
+          const capturedPawn = captureTile.getPiece();
+          captureTile.setPiece(null);
+          return capturedPawn;
         }
       }
     }
-    return false;
+    return null;
   }
 
   private disallowEnPassant() {

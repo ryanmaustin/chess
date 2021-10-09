@@ -18,35 +18,56 @@
 
 #moves {
   display: flex;
-  height: 75px;
-  background-color: #6a7486;
+  height: 50px;
+  background-color: #b1bfd8;
+  background-image: linear-gradient(315deg, #728cbd 0%, #6782b4 74%);
   align-items: center;
   width: 45vw;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
 }
 
 #moveHistory {
-  max-width: 45vw;
+  height: 100%;
   overflow-x: auto;
+  background-color: rgba(106, 93, 118, 0.15);
   color: white;
+  align-items: center;
+  text-align: center;
 }
 
 .board-options {
   position: fixed;
   background-color: #6a93cb;
   background-image: linear-gradient(315deg, #6a93cb 0%, #a4bfef 74%);
-  height: 45px;
-  width: 45vw;
-  min-width: 600px;
+  height: 5rem;
+  width: 95%;
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
   align-items: center;
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
 
+.board-options-group {
+  display: flex;
+  align-items: center;
+  max-width: 400px;
+}
+
 .board-option {
   height: 100%;
   display: flex;
   align-items: center;
+}
+
+.mat-form-field-wrapper {
+  height: 100%;
+  padding-top: 1rem;
+  padding-right: 2rem;
+}
+
+::ng-deep .mat-form-field
+{
+  font-size: 10pt !important;
 }
 
 ::ng-deep .mat-radio-label {

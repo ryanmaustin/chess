@@ -1,5 +1,5 @@
-import { Position } from "../board/position";
-import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "../board/chess";
+import { Position } from "../position";
+import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "../chess";
 
 export class Rook extends Piece {
 

@@ -1,23 +1,15 @@
-import { Component, Inject, OnInit } from '@angular/core';
-import { Board, Mate, Move, PGN, PGNPieceMap } from './lib/board/board';
-import { Position } from './lib/board/position';
-import { Piece, PieceColor, PieceType, PositionUtil, Tile } from './lib/board/chess';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { ChangeDetectorRef, Component, Inject, OnInit } from '@angular/core';
+import { Mate, Move } from './lib/structs/board';
+import { Position } from './lib/structs/position';
+import { Piece, PieceColor, PieceType, PositionUtil, Tile } from './lib/structs/chess';
+import { Subject, Subscription } from 'rxjs';
 import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { CdkDragEnd, CdkDragMove, CdkDragStart } from '@angular/cdk/drag-drop';
 import { startCase } from 'lodash';
-import { Pgn } from 'cm-pgn';
+import { Game } from './lib/structs/game';
 
-const ChessNotationMap = {
-  a: 1,
-  b: 2,
-  c: 3,
-  d: 4,
-  e: 5,
-  f: 6,
-  g: 7,
-  h: 8
-}
+const GameOption_PGN = "PGN";
+const GameOption_New_Game = "New Game"
 
 @Component({
   selector: 'app-root',
@@ -27,38 +19,46 @@ const ChessNotationMap = {
 export class AppComponent implements OnInit {
   title = 'Chess';
 
-  public selected: Piece;
-
-  public board: Board;
-
-  public playAsWhite: boolean = true;
-
-  public computerOn: boolean = true;
-
-  public mate$: BehaviorSubject<Mate>;
-
   public gameOn: boolean = false;
-
   public pgn: string = '';
-
-  public games = new Array<Array<Move>>();
-
-  public currentGame: number = -1;
-
-  private availableMoves: Array<Position>;
+  public games = new Array<Game>();
+  public currentGame: Game;
+  public playerIsWhite: boolean = true;
+  public computerOn: boolean = true;
+  public gameStartOption: string = GameOption_New_Game;
+  public gameStartOptions = [ GameOption_PGN, GameOption_New_Game ];
 
   private lastHoveredTile: Position;
+  private mateSubscription$: Subscription;
+  private promotionSubscription: Subscription;
 
-  constructor(public dialog: MatDialog)
+  constructor(public dialog: MatDialog, private cd: ChangeDetectorRef)
   {
-    this.mate$ = new BehaviorSubject<Mate>(null);
-    this.board = new Board(this.mate$);
-    this.availableMoves = [];
+    this.games = new Array<Game>();
   }
 
-  public ngOnInit()
+  public changeGame(index: number)
   {
-    this.mate$.subscribe(
+    this.currentGame = this.games[index];
+
+    if (this.mateSubscription$)
+    {
+      this.mateSubscription$.unsubscribe();
+    }
+    this.mateSubscription$ = this.subscribeToCurrentGameMated();
+
+    if (this.promotionSubscription)
+    {
+      this.promotionSubscription.unsubscribe();
+    }
+    this.promotionSubscription = this.subscribeToPromotionChoiceNeeded();
+
+    this.playerIsWhite = this.currentGame.getPlayerColor() == PieceColor.WHITE;
+  }
+
+  private subscribeToCurrentGameMated(): Subscription
+  {
+    return this.currentGame.mated().subscribe(
       (mate) => {
         if (mate) {
           this.gameOn = false;
@@ -68,136 +68,97 @@ export class AppComponent implements OnInit {
     );
   }
 
+  private subscribeToPromotionChoiceNeeded(): Subscription
+  {
+    return this.currentGame.promotionChoiceNeeded$.subscribe(
+      (makeMove) =>
+      {
+        let choice$ = new Subject<PieceType>();
+        choice$.subscribe(
+          (promotionPiece) =>
+          {
+            makeMove(promotionPiece);
+          }
+        );
+
+        this.dialog.open(
+          PromotionChoicePrompt,
+          { width: '250px', data: { color: this.currentGame.getPlayerColor(), promotionChoice$: choice$ } }
+        );
+      }
+    );
+  }
+
+  public ngOnInit()
+  {
+  }
+
   public selectPiece(piece: Piece)
   {
-    if (!this.gameOn) return;
-    if (piece.getColor() != this.board.getTurn()) return;
-    this.selected = piece;
-    this.availableMoves = this.board.prepareToMovePiece(this.selected);
+    if (!this.currentGame || this.currentGame.isFinished()) return;
+    if (piece.getColor() != this.currentGame.board.getTurn()) return;
+
+    this.currentGame.selectPiece(piece);
   }
 
   public isAvailableMove(tile: Tile): boolean
   {
-    for (const availableMove of this.availableMoves)
+    for (const availableMove of this.currentGame.availableMoves)
     {
       if (availableMove.x == tile.getPosition().x && availableMove.y == tile.getPosition().y) return true;
     }
     return false;
   }
 
-  public makeMove(pos: Position) {
-    const tile = PositionUtil.getTileAt(this.board.getTiles(), pos);
-
-    const moveFinished$ = new Subject<Move>();
-    moveFinished$.subscribe(
-      (move) => {
-        this.games[this.currentGame].push(move);
-
-        if (this.computerOn && this.gameOn && this.isComputerTurn()) {
-          this.makeComputerMove();
-        }
-      }
-    );
-
-    const promotionChoice$ = new Subject<PieceType>();
-    promotionChoice$.subscribe(
-      (choice) => {
-        this.board.movePiece(this.selected, tile, moveFinished$, choice);
-        this.availableMoves = new Array<Position>();
-        this.selected = null;
-      }
-    );
-    this.handlePromotionBeforeMove(tile, promotionChoice$);
+  public makeMove(pos: Position)
+  {
+    this.currentGame.makeMove(pos);
   }
 
-  private handlePromotionBeforeMove(tile: Tile, promotionChoice$: Subject<PieceType>) {
-
-    if (this.selected.getType() == PieceType.PAWN && tile.getPosition().y == 8) {
-      this.dialog.open(PromotionChoicePrompt, { width: '250px', data: { color: this.selected.getColor(), promotionChoice$: promotionChoice$ } });
-      return;
-    }
-    promotionChoice$.next(null);
+  public changePlayerColor()
+  {
+    this.playerIsWhite = !this.playerIsWhite;
   }
 
-  private isComputerTurn(): boolean {
-    const computerColor = this.playAsWhite ? PieceColor.BLACK : PieceColor.WHITE;
-    return this.board.getTurn() == computerColor;
+  public startNewGame()
+  {
+    this.currentGame = new Game();
+    if (this.playerIsWhite) { this.currentGame.asWhite(); }
+    else { this.currentGame.asBlack(); }
+
+    this.currentGame.computerOn = this.computerOn;
+    this.games.push(this.currentGame);
+    this.currentGame.startGame();
+    this.changeGame(this.games.length - 1);
+    console.warn("Game Started", this.currentGame, this.playerIsWhite);
+    this.cd.detectChanges();
+    this.cd.markForCheck();
   }
 
-
-  public makeComputerMove() {
-    const availableComputerMoves = new Map<Piece, Array<Position>>();
-    const availablePieces = new Array<Piece>();
-
-    const computerColor = this.playAsWhite ? PieceColor.BLACK : PieceColor.WHITE;
-
-    for (const piece of this.board.getPieces(computerColor))
-    {
-      const moves = new Array<Position>();
-      for (const move of piece.getAvailableMoves(this.board.getTiles())) moves.push(move);
-      if (moves.length == 0) continue;
-
-      availableComputerMoves.set(piece, moves);
-      availablePieces.push(piece);
-    }
-
-    const randomPiece = this.getRandom(0, availablePieces.length - 1);
-    const pieceToMove = availablePieces[randomPiece];
-    const randomMove  = this.getRandom(0, availableComputerMoves.get(pieceToMove).length - 1);
-
-    const moveToMake = availableComputerMoves.get(pieceToMove)[randomMove];
-
-    const computerMove$ = new Subject<Move>();
-    computerMove$.subscribe(
-      (move) => { this.games[this.currentGame].push(move); }
-    );
-
-    this.board.movePiece(pieceToMove, PositionUtil.getTileAt(this.board.getTiles(), moveToMake), computerMove$, PieceType.QUEEN);
-    console.log(`Computer moved ${pieceToMove.getType()} to [${moveToMake.x},${moveToMake.y}]`);
-  }
-
-  private getRandom(min: number, max: number) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
-  }
-
-  public changePlayAsColor() {
-    this.playAsWhite = !this.playAsWhite;
-  }
-
-  public startGame() {
-    this.games.push(new Array<Move>());
-    this.currentGame++;
-    this.gameOn = true;
-    this.board.setup();
-    this.availableMoves = [];
-    this.selected = null;
-
-    if (this.computerOn && !this.playAsWhite) {
-      this.makeComputerMove();
-    }
-  }
-
-  public dragStart(event: CdkDragStart, piece: Piece) {
+  public dragStart(event: CdkDragStart, piece: Piece)
+  {
     console.warn("Drag started for", piece.getColor(), piece.getType())
-    event.source.element.nativeElement.style.zIndex = '10002';
+    event.source.element.nativeElement.style.zIndex = '1000002';
     this.selectPiece(piece);
   }
 
-  public dragEnd(event: CdkDragEnd, piece: Piece) {
+  public dragEnd(event: CdkDragEnd, piece: Piece)
+  {
     event.source.element.nativeElement.style.zIndex = '10000';
 
     const tile = this.calculateTile(piece, event.distance);
-    for (const availableMove of this.availableMoves) {
-      if (availableMove.x == tile.x && availableMove.y == tile.y) {
+    for (const availableMove of this.currentGame.availableMoves)
+    {
+      if (availableMove.x == tile.x && availableMove.y == tile.y)
+      {
         this.makeMove(availableMove);
       }
     }
     event.source._dragRef.reset();
   }
 
-  private calculateTile(piece: Piece, distance: { x: number, y: number }): Position {
+  private calculateTile(piece: Piece, distance: { x: number, y: number }): Position
+  {
     const deltaX = Math.round(Math.abs(distance.x / this.getTileWidth()));
     const signX = distance.x > 0 ? 1 : distance.x == 0 ? 0 : -1;
     const deltaY = Math.round(Math.abs(distance.y / this.getTileHeight()));
@@ -206,117 +167,78 @@ export class AppComponent implements OnInit {
     return <Position> { x: piece.getPosition().x + (signX * deltaX), y: piece.getPosition().y + (signY * deltaY) };
   }
 
-  public drag(event: CdkDragMove, piece: Piece) {
-    if (this.lastHoveredTile) {
+  public drag(event: CdkDragMove, piece: Piece)
+  {
+    if (this.lastHoveredTile)
+    {
       document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "";
     }
     this.lastHoveredTile = this.calculateTile(piece, event.distance);
     document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "brightness(90%)";
   }
 
-  public getTileHeight() {
-    return document.getElementById('1-1').getBoundingClientRect().height;
+  public getTileHeight()
+  {
+    let firstTile = document.getElementById('1-1');
+    if (!firstTile) return 0;
+    return firstTile.getBoundingClientRect().height;
   }
 
-  public getTileWidth() {
-    return document.getElementById('1-1').getBoundingClientRect().width;
+  public getTileWidth()
+  {
+    let firstTile = document.getElementById('1-1');
+    if (!firstTile) return 0;
+    return firstTile.getBoundingClientRect().width;
   }
 
 
-  public getBlackPieces(): Array<Piece> {
-    return this.board.getPieces(PieceColor.BLACK);
+  public getBlackPieces(): Array<Piece>
+  {
+    return this.currentGame.board.getPieces(PieceColor.BLACK);
   }
 
-  public getWhitePieces(): Array<Piece> {
-    return this.board.getPieces(PieceColor.WHITE);
+  public getWhitePieces(): Array<Piece>
+  {
+    return this.currentGame.board.getPieces(PieceColor.WHITE);
   }
 
-  public getPosX(position: Position): number {
+  public getPosX(position: Position): number
+  {
     const tile = document.getElementById(position.x + '-' + position.y);
     const x = tile.offsetLeft;
     return x;
   }
 
-  public getPosY(position: Position): number {
+  public getPosY(position: Position): number
+  {
     const tile = document.getElementById(position.x + '-' + position.y);
     const y = tile.offsetTop;
     return y;
   }
 
-  /**
-   *
-   * 1. d4 Nc6 2. e4 d6 3. d5 Nf6 4. dxc6 e5 5. cxb7 Bxb7 6. f3 d5 7. Bd3 Bd6 8. Ne2
-c5 9. Bb5+ Nd7 10. exd5 a6 11. Bc4 Qh4+ 12. g3 Qxc4 13. Nbc3 Qb4 14. a3 Qa5 15.
-Be3 O-O 16. Qd2 Nf6 17. O-O-O Rab8 18. f4 Bxd5 19. Nxd5 Qb5 20. Nxf6+ gxf6 21.
-Qxd6 Qxb2+ 22. Kd2 Rfd8 23. Bxc5 Rxd6+ 24. Bxd6 Rd8 25. Ke3 Qxc2 26. Rd2 Qb3+
-27. Rd3 Qb6+ 28. Kf3 Qc6+ 29. Ke3 Qxh1 30. fxe5 fxe5 31. Bxe5 Re8 32. Kf4 Qf1+
-0-1
-   *
-   *
-   */
-
-  public setBoardFromInsertedMoves() {
-
-    const parsedPgn = <PGN> new Pgn(this.pgn);
-    this.games.push(new Array<Move>());
-    this.currentGame = this.games.length - 1;
-
-    try
-    {
-      this.computerOn = false;
-      this.startGame();
-
-      for (const move of parsedPgn.history.moves) {
-
-        const currentTile = PositionUtil.getTileAt(
-          this.board.getTiles(),
-          this.convertPgnMoveToGridPosition(move.from[0], move.from[1], move.color)
-        );
-
-        const moveFinished$ = new Subject<Move>();
-        moveFinished$.subscribe(
-          (move) => {
-            this.getCurrentGame().push(move);
-          }
-        );
-
-        let promotion = null;
-        if (move.flags.includes('p')) {
-          promotion =  PGNPieceMap.toPieceType(move.promotion);
-        }
-        this.board.movePiece(
-          currentTile.getPiece(),
-          PositionUtil.getTileAt(
-            this.board.getTiles(),
-            this.convertPgnMoveToGridPosition(move.to[0], move.to[1], move.color)
-          ),
-          moveFinished$,
-          promotion
-        );
-      }
-    }
-    catch (error) {
-      console.error("Unable to parse game", error);
-    }
+  public setBoardFromPgn()
+  {
+    this.computerOn = false;
+    this.startNewGame();
+    this.currentGame.setBoard(this.pgn);
   }
 
-  private convertPgnMoveToGridPosition(x: string, y: string, color: 'w' | 'b'): Position {
-
-    if (color == 'w') {
-      return { x: Number(ChessNotationMap[x]), y: Number(y) };
-    }
-    else {
-      return { x: Math.abs(ChessNotationMap[x] - 9), y: Math.abs(Number(y) - 9) };
-    }
+  public pgnGameOptionSelected(): boolean
+  {
+    return this.gameStartOption == GameOption_PGN;
   }
 
-  public getCurrentGame(): Array<Move> {
-
-    if (this.games && this.games.length > this.currentGame) {
-      return this.games[this.currentGame];
-    }
-    return [];
+  public newGameOptionSelected(): boolean
+  {
+    return this.gameStartOption == GameOption_New_Game;
   }
+
+  public isThereAPieceHere(tile: Tile): boolean
+  {
+    console.log("WUIUUTNASDKAD, ", tile, this.currentGame);
+    return tile.getPiece() != null;
+  }
+
 }
 
 @Component({
