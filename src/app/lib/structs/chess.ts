@@ -71,39 +71,43 @@ export abstract class Piece
     this.position = pos;
   }
 
-  public getAvailableMoves(boardPosition: Array<Tile>): Array<Position>
+  public getAvailableMoves(tiles: Array<Tile>, removeMovesThatPutKingInCheck ?: boolean): Array<Position>
   {
     if (this._captured) return [];
 
     return this.removeIllegalMoves(
-      boardPosition,
-      this.availableMoves(boardPosition)
+      tiles,
+      this.availableMoves(tiles),
+      removeMovesThatPutKingInCheck == null ? true : removeMovesThatPutKingInCheck
     );
   }
 
-  private removeIllegalMoves(boardPosition: Array<Tile>, moves: Array<Position>): Array<Position>
+  private removeIllegalMoves(tiles: Array<Tile>, moves: Array<Position>, removeMovesThatPutKingInCheck: boolean): Array<Position>
   {
     moves = this.filterOutOccupiedTilesOfSameColor(
-      boardPosition,
+      tiles,
       moves
     );
 
     // Remove moves that would put the king in check
-    moves = this.filterOutMovesThatPutKingInCheck(
-      boardPosition,
-      moves
-    );
+    if (removeMovesThatPutKingInCheck)
+    {
+      moves = this.filterOutMovesThatPutKingInCheck(
+        tiles,
+        moves
+      );
+    }
 
     return moves;
   }
 
-  private filterOutOccupiedTilesOfSameColor(boardPosition: Array<Tile>, moves: Array<Position>): Array<Position>
+  private filterOutOccupiedTilesOfSameColor(tiles: Array<Tile>, moves: Array<Position>): Array<Position>
   {
     const validMoves = new Array<Position>();
 
     for (const move of moves)
     {
-      if (!PositionUtil.tileOccupiedBySameColor(boardPosition, this.getColor(), move))
+      if (!PositionUtil.tileOccupiedBySameColor(tiles, this.getColor(), move))
       {
         validMoves.push(move);
       }
@@ -112,30 +116,18 @@ export abstract class Piece
     return validMoves;
   }
 
-  private filterOutMovesThatPutKingInCheck(boardPosition: Array<Tile>, moves: Array<Position>)
+  private filterOutMovesThatPutKingInCheck(tiles: Array<Tile>, moves: Array<Position>)
   {
     const legalMoves = new Array<Position>();
     for (const move of moves) {
       let legalMove = true;
 
       // a move puts the king in check when on the opponent's next turn they could capture it
-      const opponentsPosition = PositionUtil.cloneBoard(boardPosition);
+      const opponentsPosition = PositionUtil.cloneBoard(tiles);
 
       // make the move to achieve opponents pos
       PositionUtil.getTileAt(opponentsPosition, this.position).setPiece(null);
       PositionUtil.getTileAt(opponentsPosition, move).setPiece(this.getClone());
-
-      for (let i = 32; i >= 1; i--)
-      {
-        const top = opponentsPosition[Math.abs(i-32)];
-        const bottom = opponentsPosition[i+32-1];
-
-        const topPiece = top.getPiece();
-        const bottomPiece = bottom.getPiece();
-
-        top.setPiece(bottomPiece);
-        bottom.setPiece(topPiece);
-      }
 
       // Now check if any of the available moves of any of the oppenents pieces could potentially capture
       // the king
@@ -164,7 +156,7 @@ export abstract class Piece
     return legalMoves;
   }
 
-  protected abstract availableMoves(boardPosition: Array<Tile>): Array<Position>;
+  protected abstract availableMoves(tiles: Array<Tile>): Array<Position>;
 
   public getPosition(): Position
   {
@@ -211,18 +203,9 @@ export class PositionUtil {
   public static getTileAt(tiles: Array<Tile>, position: Position): Tile
   {
     for (const tile of tiles) {
-      if (tile.getPosition().x == position.x && tile.getPosition().y == position.y) return tile;
+      if (this.matches(tile, position)) return tile;
     }
     return null;
-  }
-
-  public static getAvailableMoves(tiles: Array<Tile>, piece: Piece): Array<Position>
-  {
-    const moves = new Array<Position>();
-    for (const move of piece.getAvailableMoves(tiles))
-      moves.push(move);
-
-    return moves;
   }
 
   public static getPosition(tiles: Array<Tile>, piece: Piece): Position
@@ -233,7 +216,7 @@ export class PositionUtil {
     throw Error("No position for Piece: " + piece.getColor() + " " + piece.getType());
   }
 
-  public static directionalMoves(boardPosition: Tile[], piece: Piece, xDelta: number, yDelta: number, limitOneMove ?: boolean): Array<Position>
+  public static directionalMoves(tiles: Tile[], piece: Piece, xDelta: number, yDelta: number, limitOneMove ?: boolean): Array<Position>
   {
     const moves = new Array<Position>();
     let blocked = false;
@@ -243,7 +226,7 @@ export class PositionUtil {
 
     while (!blocked) {
       let tile = this.getTileAt(
-        boardPosition,
+        tiles,
         // Diagonal
         {
           x: piece.getPosition().x + (xSign * (Math.abs(xDelta) + count)),
@@ -294,20 +277,21 @@ export class PositionUtil {
     return clonedBoard;
   }
 
-  public static flipBoard(tiles: Array<Tile>)
+  public static matches(a: Tile | Position, b: Tile | Position): boolean
   {
-    for (let i = 32; i >= 1; i--)
+    let aPos = a;
+    let bPos = b;
+    if (a instanceof Tile)
     {
-      const top = tiles[Math.abs(i-32)];
-      const bottom = tiles[i+32-1];
-
-      const topPiece = top.getPiece();
-      const bottomPiece = bottom.getPiece();
-
-      top.setPiece(bottomPiece);
-      bottom.setPiece(topPiece);
+      aPos = a.getPosition();
     }
+    if (b instanceof Tile)
+    {
+      aPos = b.getPosition();
+    }
+    return (<Position>aPos).x == (<Position>bPos).x && (<Position>aPos).y == (<Position>bPos).y;
   }
+
 }
 
 export class Tile {

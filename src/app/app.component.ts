@@ -110,9 +110,9 @@ export class AppComponent implements OnInit {
     return false;
   }
 
-  public makeMove(pos: Position)
+  public moveSelectedPiece(pos: Position)
   {
-    this.currentGame.makeMove(pos);
+    this.currentGame.moveSelectedPiece(pos);
   }
 
   public changePlayerColor()
@@ -137,7 +137,6 @@ export class AppComponent implements OnInit {
 
   public dragStart(event: CdkDragStart, piece: Piece)
   {
-    console.warn("Drag started for", piece.getColor(), piece.getType())
     event.source.element.nativeElement.style.zIndex = '1000002';
     this.selectPiece(piece);
   }
@@ -151,7 +150,7 @@ export class AppComponent implements OnInit {
     {
       if (availableMove.x == tile.x && availableMove.y == tile.y)
       {
-        this.makeMove(availableMove);
+        this.moveSelectedPiece(availableMove);
       }
     }
     event.source._dragRef.reset();
@@ -231,12 +230,6 @@ export class AppComponent implements OnInit {
   public newGameOptionSelected(): boolean
   {
     return this.gameStartOption == GameOption_New_Game;
-  }
-
-  public isThereAPieceHere(tile: Tile): boolean
-  {
-    console.log("WUIUUTNASDKAD, ", tile, this.currentGame);
-    return tile.getPiece() != null;
   }
 
 }

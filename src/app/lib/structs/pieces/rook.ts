@@ -7,17 +7,17 @@ export class Rook extends Piece {
     super(PieceType.ROOK, color);
   }
 
-  protected availableMoves(boardPosition: Tile[]): Array<Position> {
+  protected availableMoves(tiles: Array<Tile>): Array<Position> {
     const moves = new Array<Position>();
 
     // N
-    for (const move of PositionUtil.directionalMoves(boardPosition, this, 0, 1)) moves.push(move);
+    for (const move of PositionUtil.directionalMoves(tiles, this, 0, 1)) moves.push(move);
     // E
-    for (const move of PositionUtil.directionalMoves(boardPosition, this, 1, 0)) moves.push(move);
+    for (const move of PositionUtil.directionalMoves(tiles, this, 1, 0)) moves.push(move);
     // S
-    for (const move of PositionUtil.directionalMoves(boardPosition, this, 0, -1)) moves.push(move);
+    for (const move of PositionUtil.directionalMoves(tiles, this, 0, -1)) moves.push(move);
     // W
-    for (const move of PositionUtil.directionalMoves(boardPosition, this, -1, 0)) moves.push(move);
+    for (const move of PositionUtil.directionalMoves(tiles, this, -1, 0)) moves.push(move);
 
     return moves;
   }

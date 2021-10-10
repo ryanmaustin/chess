@@ -5,7 +5,7 @@
     <div id="moves" class="rounded ml-auto mb-1 mt-auto mr-auto align-self-center p-1 d-flex flex-row" *ngIf="this.currentGame">
 
       <div id="moveHistory" class="rounded d-flex flex-row flex-no-wrap flex-grow-1 pr-1 pl-1">
-        <p class="ml-1 mr-1" *ngFor="let move of this.currentGame.pastMoves"> {{ move.pgnMove }} </p>
+        <p class="ml-1 mr-1" *ngFor="let move of this.currentGame.pastMoves"> {{ move.pgn }} </p>
       </div>
 
     </div>
@@ -20,7 +20,7 @@
         [class.tile-drag-over]="tile.hover"
         >
           <div class="move-container" *ngIf="this.isAvailableMove(tile)">
-            <div class="make-move glow-purple" (click)="makeMove(tile.getPosition())">
+            <div class="make-move glow-purple" (click)="moveSelectedPiece(tile.getPosition())">
               •
             </div>
           </div>

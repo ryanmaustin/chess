@@ -7,41 +7,79 @@ import { Bishop } from "./pieces/bishop";
 import { Queen } from "./pieces/queen";
 import { King } from "./pieces/king";
 import { Position } from "./position";
-import { BehaviorSubject, Subject } from "rxjs";
-import { PGNMapper, PGNPieceMap } from "../util/pgn-util";
+import { BehaviorSubject } from "rxjs";
 
-export interface Move {
-  pgnMove: string,
-  gameover: boolean
+export interface Move
+{
+  movingPiece: Piece,
+  capturedPiece: Piece,
+  currentTile: Tile,
+  destinationTile: Tile,
+  promotionPiece ?: PieceType,
+  pgn ?: string,
+  checkmate ?: boolean
+}
+
+export interface EnPassant
+{
+  available: boolean,
+  color: PieceColor,
+  turns: number
 }
 
 export class Board {
 
   public ranks: Array<Rank>;
 
-  private tiles: Array<Tile>;
-  private flipped: boolean = false;
-  private turn = PieceColor.WHITE;
+  public tiles: Array<Tile>;
+  public turn: PieceColor = PieceColor.WHITE;
+
   private whitePieces: Array<Piece>;
   private blackPieces: Array<Piece>;
-  private enPassantAvailable = new BehaviorSubject<boolean>(false);
+  private whiteEnPassantAvailable: BehaviorSubject<EnPassant> = new BehaviorSubject<EnPassant>(null);
+  private blackEnPassantAvailable: BehaviorSubject<EnPassant> = new BehaviorSubject<EnPassant>(null);
+
+  private whiteEnPassant: EnPassant;
+  private blackEnPassant: EnPassant;
 
   constructor(private mate$: BehaviorSubject<Mate>)
   {
     this.initTiles();
 
-    this.enPassantAvailable.subscribe(
-      (avail) => {
-        if (!avail) {
-          for (const tile of this.tiles) {
-            const piece = tile.getPiece();
-            if (piece != null && piece.getType() == PieceType.PAWN) {
-              (<Pawn>piece).enPassantNoLongerAllowed();
+    this.subscribeToEnPassant(this.whiteEnPassantAvailable);
+    this.subscribeToEnPassant(this.blackEnPassantAvailable);
+  }
+
+  private subscribeToEnPassant(enPassant: BehaviorSubject<EnPassant>)
+  {
+    enPassant.subscribe(
+      (enPassant) =>
+      {
+        if (!enPassant) return;
+        if (enPassant.color == PieceColor.BLACK)
+        {
+          this.blackEnPassant = enPassant;
+        }
+        else
+        {
+          this.whiteEnPassant = enPassant;
+        }
+        for (const p of this.getPieces(enPassant.color))
+        {
+          if (p instanceof Pawn)
+          {
+            if (enPassant.available)
+            {
+              p.enPassantNowAllowed();
+            }
+            else
+            {
+              p.enPassantNoLongerAllowed();
             }
           }
         }
       }
-    );
+    )
   }
 
   public initTiles()
@@ -112,125 +150,167 @@ export class Board {
     return this.tiles;
   }
 
-  public isFlipped(): boolean
-  {
-    return this.flipped;
-  }
-
   public getAvailableMoves(piece: Piece): Array<Position>
   {
     if (piece.getColor() != this.turn) return []; // not this color's turn
-    return PositionUtil.getAvailableMoves(this.getTiles(), piece);
+    return piece.getAvailableMoves(this.tiles);
   }
 
   /**
    * Moves the given piece to the given tile.
    *
-   * Once the move has been completed a callback is sent via moveFinished if provided.
-   *
    * Additionally, a promotion choice should provided in the case that this move would require one.
    */
-  public movePiece(piece: Piece, tile: Tile, moveFinished$ ?: Subject<Move>, promotionChoice ?: PieceType)
+  public movePiece(move: Move)
   {
-    let p = piece;
     this.disallowEnPassant();
-
-    const currentTile = PositionUtil.getTileAt(this.tiles, p.getPosition());
-    const origPos = p.getPosition();
-    let capturedPiece = tile.getPiece();
-    let pgnCastle = '';
-    let promotionPiece = null;
-
-    if (p.getType() == PieceType.PAWN)
-    {
-      const pawn = <Pawn> p;
-      pawn.pawnMoved(origPos, tile.getPosition(), this.enPassantAvailable);
-      promotionPiece = this.handlePawnPromotion(pawn, tile, promotionChoice);
-      if (promotionPiece) p = promotionPiece;
-
-      const capturedPawn = this.handleEnPassant(pawn, tile);
-      if (capturedPawn)
-      {
-        capturedPiece = capturedPawn;
-      }
-    }
-    else if (p.getType() == PieceType.KING)
-    {
-      const king = <King> p;
-      pgnCastle = this.handleCastle(king, currentTile, tile);
-    }
-
-    // Resolve PGN Move
-    let pgnMove = PGNMapper.get(piece.getType(), piece.getColor(), origPos, tile.getPosition(), capturedPiece != null);
-    // Pawn promotion?
-    if (promotionPiece)
-    {
-      pgnMove += '=' + PGNPieceMap.get(p.getType());
-    }
-    // Castling?
-    else if (pgnCastle)
-    {
-      pgnMove = pgnCastle;
-    }
-
-    // Piece is no longer here
-    currentTile.setPiece(null);
-
-    // Capture piece if any, then set tile
-    if (capturedPiece)
-    {
-      console.error(`${capturedPiece.getColor()} ${capturedPiece.getType()} was captured by ${piece.getColor()} ${piece.getType()} on [${tile.getPosition().x}, ${tile.getPosition().y}]`)
-      capturedPiece.captured();
-    }
-    tile.setPiece(p);
-
-    p.moved();
-
-    this.switchTurn(p.getColor());
-
-    let gameover = this.lookForCheckmate();
-    if (gameover) pgnMove += "#";
-    if (moveFinished$)
-    {
-      moveFinished$.next( { pgnMove: pgnMove, gameover: gameover } );
-    }
-
+    this.handleIfPawn(move, move.promotionPiece);
+    this.handleIfKing(move);
+    this.movePieceToTile(move);
+    this.capturePiece(move);
+    this.switchTurn(move.movingPiece.getColor());
+    this.isMate(true);
   }
 
-  private lookForCheckmate(): boolean {
-    let nextTurnPieces = new Array<Piece>();
-    let winner = PieceColor.WHITE;
+  private movePieceToTile(move: Move)
+  {
+    move.currentTile.setPiece(null);
+    // When pawn promotes, the handleIfPawn method will put the promotion piece on the destination tile
+    if (!move.movingPiece.isCaptured()) move.destinationTile.setPiece(move.movingPiece);
+    move.movingPiece.moved();
+  }
 
-    if (this.turn == PieceColor.WHITE) {
-      nextTurnPieces = this.whitePieces;
-      winner = PieceColor.BLACK;
-    }
-    else { // Black's turn
-      nextTurnPieces = this.blackPieces;
-    }
-
-    const availMoves = new Array<Position>();
-    for (const nextTurnPiece of nextTurnPieces) {
-      for (const move of nextTurnPiece.getAvailableMoves(this.tiles)) availMoves.push(move);
-    }
-
-    if (availMoves.length == 0) {
-      PositionUtil.flipBoard(this.tiles);
-      const checkmate = this.kingIsCapturableBy(winner);
-      this.mate$.next(
-        { winner: checkmate ? winner : null, checkmate: checkmate }
+  private capturePiece(move: Move)
+  {
+    // Capture piece if any, then set tile
+    if (move.capturedPiece)
+    {
+      console.warn(
+        `${move.capturedPiece.getColor()} ${move.capturedPiece.getType()} was captured by ` +
+        `${move.movingPiece.getColor()} ${move.movingPiece.getType()} on ` +
+        `[${move.destinationTile.getPosition().x}, ${move.destinationTile.getPosition().y}]`
       );
+      move.capturedPiece.captured();
+    }
+  }
+
+  /**
+   * If the piece being moved is a pawn, this method handles both En Passant and Promotion
+   * if applicable.
+   */
+  private handleIfPawn(move: Move, promotionChoice: PieceType)
+  {
+    if (move.movingPiece.getType() != PieceType.PAWN) return;
+
+    const pawn = <Pawn> move.movingPiece;
+    let enPassantAvailable = this.turn == PieceColor.WHITE ? this.blackEnPassantAvailable : this.whiteEnPassantAvailable;
+    pawn.pawnMoved(move.currentTile.getPosition(), move.destinationTile.getPosition(), enPassantAvailable);
+    const promotion = this.handlePawnPromotion(pawn, move.destinationTile, promotionChoice);
+    if (promotion) move.destinationTile.setPiece(promotion);
+
+    const capturedPawn = this.handleEnPassant(pawn, move.destinationTile);
+    if (capturedPawn) move.capturedPiece = capturedPawn;
+  }
+
+  /**
+   * If the Pawn is being promoted, handle it here.
+   */
+  private handlePawnPromotion(pawn: Pawn, tile: Tile, promotionChoice: PieceType): Piece
+  {
+    if (tile.getPosition().y != 8 && tile.getPosition().y != 1) return null;
+
+    pawn.captured(); // take off baord
+    const promotedPiece = Board.create(promotionChoice, pawn.getColor());
+    promotedPiece.setPosition(tile.getPosition());
+    if (pawn.getColor() == PieceColor.BLACK) { this.blackPieces.push(promotedPiece); }
+    else { this.whitePieces.push(promotedPiece); }
+    return promotedPiece;
+  }
+
+  /**
+   * Handles En Passant, returning the captured pawn or null if there was none
+   */
+  public handleEnPassant(pawn: Pawn, tile: Tile): Piece
+  {
+    // If there is a piece in this tile then there is no en passant capture
+    if (tile.getPiece() != null) return null;
+
+    if (Math.abs(tile.getPosition().y - pawn.getPosition().y) == 1)
+    {
+      const sign =
+        (tile.getPosition().x - pawn.getPosition().x) == -1 ? -1 :
+        (tile.getPosition().x - pawn.getPosition().x) == 1 ? 1 : 0;
+      if (sign == 0) return null;
+
+      const captureTile = PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x + sign, y: pawn.getPosition().y })
+      const capturedPawn = captureTile.getPiece();
+      if (capturedPawn) capturedPawn.captured();
+      captureTile.setPiece(null);
+      return capturedPawn;
+    }
+  }
+
+  private handleIfKing(move: Move)
+  {
+    if (move.movingPiece.getType() == PieceType.KING)
+    {
+      const king = <King> move.movingPiece;
+      this.handleCastle(king, move.currentTile, move.destinationTile);
+    }
+  }
+
+  /**
+   * Determines if the current board position is a Stalemate or Checkmate by checking if the current turn
+   * has no legal moves.
+   *
+   * Returns true for checkmate, false for stalemate, and null otherwise.
+   */
+  public isMate(emitMate: boolean): boolean
+  {
+    let potentialWinner = PieceColor.WHITE;
+    if (this.turn == PieceColor.WHITE) potentialWinner = PieceColor.BLACK;
+
+    if (this.getCurrentTurnsAvailableMoves().length == 0)
+    {
+      const checkmate = this.kingIsCapturableBy(potentialWinner);
+
+      if (emitMate)
+      {
+        this.mate$.next(
+          { winner: checkmate ? potentialWinner : null, checkmate: checkmate }
+        );
+      }
       return checkmate;
     }
-    return false;
+    return null;
   }
 
-  private kingIsCapturableBy(color: PieceColor): boolean {
+  private getCurrentTurnsAvailableMoves(): Array<Position>
+  {
+    let allPieces = this.blackPieces;
+    if (this.turn == PieceColor.WHITE)
+    {
+      allPieces = this.whitePieces;
+    }
+    const availMoves = new Array<Position>();
+    for (const piece of allPieces)
+    {
+      if (piece.isCaptured()) continue;
+      for (const move of piece.getAvailableMoves(this.tiles)) availMoves.push(move);
+    }
+    return availMoves;
+  }
+
+  private kingIsCapturableBy(color: PieceColor): boolean
+  {
     const attackersPieces = this.getPieces(color);
-    for (const attackersPiece of attackersPieces) {
-      for (const move of attackersPiece.getAvailableMoves(this.tiles)) {
+    for (const attackersPiece of attackersPieces)
+    {
+      for (const move of attackersPiece.getAvailableMoves(this.tiles))
+      {
         const tile = PositionUtil.getTileAt(this.tiles, move);
-        if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING) {
+        if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING)
+        {
           return true;
         }
       }
@@ -238,12 +318,13 @@ export class Board {
     return false;
   }
 
-  private handleCastle(king: King, currentTile: Tile, destinationTile: Tile): string{
+  private handleCastle(king: King, currentTile: Tile, destinationTile: Tile)
+  {
     if (king.getMoves() != 0) return;
     let distance = destinationTile.getPosition().x - currentTile.getPosition().x;
 
-    if (Math.abs(distance) > 1) {
-
+    if (Math.abs(distance) > 1)
+    {
       // King moved right, so move right rook to the left of the king
       if (distance > 0) {
         const rookTile = PositionUtil.getTileAt(this.tiles, { x: 8, y: 1 });
@@ -259,74 +340,58 @@ export class Board {
         rookTile.setPiece(null);
         return king.getColor() == PieceColor.BLACK ? 'O-O' : 'O-O-O';
       }
+      return true;
     }
-    return '';
+    return false;
   }
 
-  private handlePawnPromotion(pawn: Pawn, tile: Tile, promotionChoice: PieceType): Piece
+  private disallowEnPassant()
   {
-    if (tile.getPosition().y == 8) {
-      pawn.captured();
-      const promotedPiece = Board.create(promotionChoice, pawn.getColor());
-
-      if (pawn.getColor() == PieceColor.BLACK) {
-        this.blackPieces.push(promotedPiece);
-      }
-      else {
-        this.whitePieces.push(promotedPiece);
-      }
-      return promotedPiece;
-    }
-    return null;
-  }
-
-  private handleEnPassant(pawn: Pawn, tile: Tile): Piece
-  {
-    // We know that we are capturing by en passant if the pawn is moving diagonally to
-    // a tile with no piece
-
-    if (tile.getPiece() == null)
+    if (this.blackEnPassant)
     {
-      if ((tile.getPosition().y - pawn.getPosition().y) == 1) {
-        // Remove pawn on the left
-        if ((tile.getPosition().x - pawn.getPosition().x) == -1) {
-          const captureTile = PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x - 1, y: pawn.getPosition().y })
-          const capturedPawn = captureTile.getPiece();
-          captureTile.setPiece(null);
-          return capturedPawn;
-        }
-        // Remove pawn on the right
-        else if ((tile.getPosition().x - pawn.getPosition().x) == 1) {
-          const captureTile = PositionUtil.getTileAt(this.tiles, { x: pawn.getPosition().x + 1, y: pawn.getPosition().y });
-          const capturedPawn = captureTile.getPiece();
-          captureTile.setPiece(null);
-          return capturedPawn;
-        }
+      if (this.blackEnPassant.turns > 0)
+      {
+        this.blackEnPassant.available = false;
+        this.blackEnPassant.turns = 0;
+        this.blackEnPassantAvailable.next(this.blackEnPassant);
+      }
+      else
+      {
+        this.blackEnPassant.turns++;
       }
     }
-    return null;
-  }
 
-  private disallowEnPassant() {
-    if (this.enPassantAvailable.getValue()) {
-      this.enPassantAvailable.next(false);
+    if (this.whiteEnPassant)
+    {
+      if (this.whiteEnPassant.turns > 0)
+      {
+        this.whiteEnPassant.available = false;
+        this.whiteEnPassant.turns = 0;
+        this.whiteEnPassantAvailable.next(this.whiteEnPassant);
+      }
+      else
+      {
+        this.whiteEnPassant.turns++;
+      }
     }
   }
 
-  private switchTurn(currentTurn: PieceColor)
+  public switchTurn(currentTurn: PieceColor)
   {
-    if (currentTurn == PieceColor.BLACK) {
+    if (currentTurn == PieceColor.BLACK)
+    {
       this.turn = PieceColor.WHITE;
     }
-    else {
+    else
+    {
       this.turn = PieceColor.BLACK
     }
-    PositionUtil.flipBoard(this.tiles);
   }
 
   public getPieces(computerColor: PieceColor)
   {
-    if (computerColor == PieceColor.BLACK) {
+    if (computerColor == PieceColor.BLACK)
+    {
       return this.blackPieces;
     }
     else {
@@ -338,8 +403,10 @@ export class Board {
     return this.turn;
   }
 
-  public static create(type: PieceType, color: PieceColor): Piece {
-    switch (type) {
+  public static create(type: PieceType, color: PieceColor): Piece
+  {
+    switch (type)
+    {
       case PieceType.PAWN:
         return new Pawn(color);
 
@@ -362,7 +429,8 @@ export class Board {
 
 }
 
-export interface Mate {
+export interface Mate
+{
   winner: PieceColor,
   checkmate: boolean
 }

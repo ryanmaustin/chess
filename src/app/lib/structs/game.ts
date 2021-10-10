@@ -4,6 +4,7 @@ import { Pgn } from 'cm-pgn';
 import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "./chess";
 import { PGN, PGNPieceMap, PGNUtil } from "../util/pgn-util";
 import { Position } from "./position";
+import { Pawn } from "./pieces/pawn";
 
 export class Game
 {
@@ -74,31 +75,27 @@ export class Game
       {
         const currentTile = PositionUtil.getTileAt(
           this.board.getTiles(),
-          PGNUtil.convertPgnMoveToGridPosition(move.from[0], move.from[1], move.color)
-        );
-
-        const moveFinished$ = new Subject<Move>();
-        moveFinished$.subscribe(
-          (move) =>
-          {
-            this.pastMoves.push(move);
-          }
+          PGNUtil.convertPgnMoveToGridPosition(move.from[0], move.from[1])
         );
 
         let promotion = null;
         if (move.flags.includes('p'))
         {
-          promotion =  PGNPieceMap.toPieceType(move.promotion);
+          promotion = PGNPieceMap.toPieceType(move.promotion);
         }
-        this.board.movePiece(
-          currentTile.getPiece(),
-          PositionUtil.getTileAt(
-            this.board.getTiles(),
-            PGNUtil.convertPgnMoveToGridPosition(move.to[0], move.to[1], move.color)
-          ),
-          moveFinished$,
-          promotion
+
+        const destinationTile = PositionUtil.getTileAt(
+          this.board.getTiles(),
+          PGNUtil.convertPgnMoveToGridPosition(move.to[0], move.to[1])
         );
+
+        const pieceToMove = currentTile.getPiece();
+
+        const boardMove = this.createMove(pieceToMove, destinationTile, promotion);
+        this.board.movePiece(boardMove);
+        boardMove.checkmate = this.board.isMate(false);
+
+        this.logAndSave(boardMove, false);
       }
     }
     catch (error)
@@ -125,13 +122,33 @@ export class Game
 
   public makeComputerMove()
   {
+    const move = this.getRandomComputerMove(this.opponentColor);
+    const pieceToMove = move.movingPiece;
+
+    let movePiece = (promotionChoice) =>
+    {
+      move.promotionPiece = promotionChoice;
+      this.board.movePiece(move);
+      move.checkmate = this.board.isMate(false)
+      this.logAndSave(move, true);
+    }
+
+    this.handlePromotionBeforeMove(pieceToMove.getType(), move.destinationTile, movePiece, this.opponentColor);
+    console.log(`Computer moved ${pieceToMove.getType()} to [${move.destinationTile.getPosition().x},${move.destinationTile.getPosition().y}]`);
+  }
+
+  /**
+   * Generates a Random Computer Move. Note: These are most likely BAD moves.
+   */
+  private getRandomComputerMove(color: PieceColor): Move
+  {
     const availableComputerMoves = new Map<Piece, Array<Position>>();
     const availablePieces = new Array<Piece>();
 
     for (const piece of this.board.getPieces(this.opponentColor))
     {
       const moves = new Array<Position>();
-      for (const move of piece.getAvailableMoves(this.board.getTiles())) moves.push(move);
+      for (const move of piece.getAvailableMoves(this.board.tiles)) moves.push(move);
       if (moves.length == 0) continue;
 
       availableComputerMoves.set(piece, moves);
@@ -144,16 +161,7 @@ export class Game
 
     const moveToMake = availableComputerMoves.get(pieceToMove)[randomMove];
 
-    const computerMove$ = new Subject<Move>();
-    computerMove$.subscribe(
-      (move) => {
-        this.pastMoves.push(move);
-        if (!this.ready) this.ready = true;
-      }
-    );
-
-    this.board.movePiece(pieceToMove, PositionUtil.getTileAt(this.board.getTiles(), moveToMake), computerMove$, PieceType.QUEEN);
-    console.log(`Computer moved ${pieceToMove.getType()} to [${moveToMake.x},${moveToMake.y}]`);
+    return this.createMove(pieceToMove, PositionUtil.getTileAt(this.board.getTiles(), moveToMake), null);
   }
 
   private static getRandom(min: number, max: number) {
@@ -174,43 +182,72 @@ export class Game
   {
     this.selected = piece;
     this.availableMoves = this.board.getAvailableMoves(piece);
-    console.warn("Piece selected:", piece);
   }
 
-  public makeMove(pos: Position)
+  /**
+   * Initiated by Player
+   */
+  public moveSelectedPiece(pos: Position)
   {
     this.finished = false; // in case game starts up again
-    const currentTurn = this.board.getTurn();
     const tile = PositionUtil.getTileAt(this.board.getTiles(), pos);
-
-    const moveFinished$ = new Subject<Move>();
-    moveFinished$.subscribe(
-      (move) =>
-      {
-        this.pastMoves.push(move);
-
-        if (this.computerOn && this.isComputerTurn() && !move.gameover)
-        {
-          this.makeComputerMove();
-        }
-      }
-    );
+    const piece = this.selected;
+    const color = this.selected.getColor();
 
     let movePiece = (promotionChoice) =>
     {
-      console.log("Prior to move", this.selected, tile, moveFinished$, promotionChoice);
-      this.board.movePiece(this.selected, tile, moveFinished$, promotionChoice);
+      const move = this.createMove(this.selected, tile, promotionChoice);
+      this.board.movePiece(move);
+
       this.availableMoves = new Array<Position>();
       this.selected = null;
+
+      move.checkmate = this.board.isMate(false)
+      if (move.checkmate != null) this.board.switchTurn(color); // Switch board back since there are no more turns
+      this.logAndSave(move, true);
+
+      if (this.computerOn && this.isComputerTurn() && move.checkmate == null) this.makeComputerMove();
     }
 
-    this.handlePromotionBeforeMove(tile, movePiece, currentTurn);
+    this.handlePromotionBeforeMove(piece.getType(), tile, movePiece, color);
   }
 
-  private handlePromotionBeforeMove(tile: Tile, movePiece: Function, currentTurn: PieceColor)
+  private createMove(pieceToMove: Piece, destinationTile: Tile, promotionPiece: PieceType): Move
+  {
+    return <Move>
+    {
+      movingPiece: pieceToMove,
+      currentTile: PositionUtil.getTileAt(this.board.getTiles(), pieceToMove.getPosition()),
+      destinationTile: destinationTile,
+      capturedPiece: destinationTile.getPiece(),
+      promotionPiece: promotionPiece
+    };
+  }
+
+  private logAndSave(move: Move, log: boolean)
+  {
+    if (log) console.log(`${move.movingPiece.getColor()} ${move.movingPiece.getType()} moved to [${move.destinationTile.getPosition().x}, ${move.destinationTile.getPosition().y}]`);
+
+    const enPassantCapture = this.getEnPassantCapture(move.movingPiece, move.destinationTile);
+    if (enPassantCapture) move.capturedPiece = enPassantCapture;
+
+    move.pgn = PGNUtil.toPGN(move, this.board.getTiles());
+    this.pastMoves.push(move);
+  }
+
+  private getEnPassantCapture(movingPiece: Piece, destinationTile: Tile)
+  {
+    if (movingPiece.getType() == PieceType.PAWN && destinationTile.getPiece() == null)
+    {
+      return this.board.handleEnPassant(<Pawn>movingPiece, destinationTile);
+    }
+    return null;
+  }
+
+  private handlePromotionBeforeMove(pieceType: PieceType, tile: Tile, movePiece: Function, currentTurn: PieceColor)
   {
     // Determine if a promotion choice is needed
-    if (this.selected.getType() == PieceType.PAWN && tile.getPosition().y == 8)
+    if (pieceType == PieceType.PAWN && (tile.getPosition().y == 8 || tile.getPosition().y == 1))
     {
       if (this.computerOn && currentTurn == this.opponentColor)
       {

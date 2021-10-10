@@ -7,7 +7,7 @@ export class Knight extends Piece {
     super(PieceType.KNIGHT, color);
   }
 
-  protected availableMoves(boardPosition: Tile[]): Array<Position> {
+  protected availableMoves(tiles: Array<Tile>): Array<Position> {
     const moves = new Array<Position>();
 
     const potentialMoves = [

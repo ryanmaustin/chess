@@ -1,4 +1,6 @@
-import { PieceType, PieceColor } from "../structs/chess";
+import { Move } from "../structs/board";
+import { PieceType, PieceColor, Tile, Piece, PositionUtil } from "../structs/chess";
+import { King } from "../structs/pieces/king";
 import { Position } from "../structs/position";
 
 
@@ -31,30 +33,201 @@ const ChessNotationMap =
 export class PGNUtil
 {
 
-  public static convertPgnMoveToGridPosition(x: string, y: string, color: 'w' | 'b'): Position
+  public static convertPgnMoveToGridPosition(x: string, y: string): Position
   {
-    if (color == 'w')
+    return { x: Number(ChessNotationMap[x]), y: Number(y) };
+  }
+
+  public static toPGN(move: Move, tiles: Array<Tile>): string
+  {
+    let pgn = PGNMapper.get(
+      move.movingPiece.getType(),
+      move.movingPiece.getColor(),
+      move.currentTile.getPosition(),
+      move.destinationTile.getPosition(),
+      move.capturedPiece != null
+    );
+
+    if (move.promotionPiece)
     {
-      return { x: Number(ChessNotationMap[x]), y: Number(y) };
+      pgn += '=' + PGNPieceMap.get(move.promotionPiece);
+    }
+    else if (move.movingPiece.getType() == PieceType.KING)
+    {
+      let distance = move.destinationTile.getPosition().x - move.currentTile.getPosition().x;
+      if (Math.abs(distance) > 1)
+      {
+        pgn = this.pgnForCastling(<King>(move.movingPiece), distance);
+      }
+    }
+    pgn = this.resolveAmbiguities(move, pgn, tiles) +
+      (move.checkmate ? '#' : this.kingInCheck(move, tiles) ? '+' : '');
+
+    return pgn;
+  }
+
+  private static kingInCheck(move: Move, tiles: Array<Tile>): boolean
+  {
+
+    for (const tile of tiles)
+    {
+      if (tile.getPiece() == null) continue;
+      if (tile.getPiece().getColor() != move.movingPiece.getColor()) continue;
+
+      for (const availableMove of tile.getPiece().getAvailableMoves( tiles ))
+      {
+        const availableTile = PositionUtil.getTileAt(tiles, availableMove);
+        if (availableTile.getPiece() == null) continue;
+        if (availableTile.getPiece().getType() == PieceType.KING && availableTile.getPiece().getColor() != move.movingPiece.getColor()) return true;
+      }
+    }
+    return false;
+  }
+
+  private static pgnForCastling(king: King, distance: number): string
+  {
+    if (distance > 0)
+    {
+      return king.getColor() == PieceColor.BLACK ? 'O-O-O' : 'O-O';
     }
     else
     {
-      return { x: Math.abs(ChessNotationMap[x] - 9), y: Math.abs(Number(y) - 9) };
+      return king.getColor() == PieceColor.BLACK ? 'O-O' : 'O-O-O';
     }
   }
 
+  private static resolveAmbiguities(move: Move, currentPgn: string, tiles: Array<Tile>): string
+  {
+    // The King is the only piece that could never have an ambiguity
+    if (move.movingPiece.getType() != PieceType.KING)
+    {
+      return this.resolvePotentialAmbiguities(move, currentPgn, tiles);
+    }
+    return currentPgn;
+  }
+
+  private static resolvePotentialAmbiguities(move: Move, currentPgn: string, tiles: Array<Tile>): string
+  {
+    // Are there pieces that can reach the same destination tile?
+    const otherPieces = this.getOthersOfTypeThatCanReachPosition(
+      tiles, move.movingPiece, move.capturedPiece, move.currentTile.getPosition(), move.destinationTile.getPosition()
+    );
+
+    if (otherPieces.length == 0) return currentPgn; // No ambiguity
+
+    // Try to distinguish the piece...
+    let distinguisher = this.distinguish(move.movingPiece, otherPieces, move.currentTile.getPosition());
+
+    let pieceDesignator = PGNPieceMap.get(move.movingPiece.getType());
+    let capturing = move.capturedPiece != null ? 'x' : '';
+    let target = PGNMoveMap.get(move.destinationTile.getPosition(), move.movingPiece.getColor());
+
+    return pieceDesignator + distinguisher + capturing + target;
+  }
+
+  private static distinguish(piece: Piece, otherPieces: Array<Piece>, originPosition: Position): string
+  {
+    let distinguisher =  this.distinquishByFile(piece, otherPieces, originPosition);
+    if (!distinguisher) distinguisher = this.distinquishByRank(piece, otherPieces, originPosition);
+    if (!distinguisher) distinguisher = PGNMoveMap.get(piece.getPosition(), piece.getColor());
+    return distinguisher;
+  }
+
+  private static distinquishByFile(piece: Piece, otherPieces: Array<Piece>, originPosition: Position): string
+  {
+    let noneOnSameFile = true;
+    for (const otherPiece of otherPieces)
+    {
+      if (this.onSameFile(originPosition, otherPiece))
+      {
+        noneOnSameFile = false;
+        break;
+      }
+    }
+    if (noneOnSameFile)
+    {
+      return PGNMoveMap.get(originPosition, piece.getColor()).substr(0, 1);
+    }
+    return null;
+  }
+
+  private static distinquishByRank(piece: Piece, otherPieces: Array<Piece>, originPosition: Position): string
+  {
+    let noneOnSameRank = true;
+    for (const otherPiece of otherPieces)
+    {
+      if (this.onSameRank(originPosition, otherPiece))
+      {
+        noneOnSameRank = false;
+        break;
+      }
+    }
+    if (noneOnSameRank)
+    {
+      return PGNMoveMap.get(originPosition, piece.getColor()).substr(1, 1);
+    }
+    return null;
+  }
+
+  private static canReachTargetPosition(originPosition: Position, targetPosition: Position, p: Piece, capturedPiece: Piece, tiles: Array<Tile>): boolean
+  {
+    // Temporarily put current piece back at its starting position so that the
+    // piece we are checking can accurately get its available moves
+    const targetTile = PositionUtil.getTileAt(tiles, targetPosition);
+    const originTile = PositionUtil.getTileAt(tiles, originPosition);
+    const currentPiece = targetTile.getPiece();
+    targetTile.setPiece(capturedPiece); // put the captured piece back
+    originTile.setPiece(currentPiece);
+    let matchFound = false;
+
+    for (const move of p.getAvailableMoves(tiles))
+    {
+      if (PositionUtil.matches(move, targetPosition)) matchFound = true;
+    }
+
+    // Put piece back
+    targetTile.setPiece(currentPiece);
+    originTile.setPiece(null);
+    return matchFound;
+  }
+
+  private static onSameFile(originPosition: Position, b: Piece): boolean
+  {
+    return originPosition.x == b.getPosition().x;
+  }
+
+  private static onSameRank(originPosition: Position, b: Piece): boolean
+  {
+    return originPosition.y == b.getPosition().y;
+  }
+
+  private static getOthersOfTypeThatCanReachPosition(tiles: Array<Tile>, piece: Piece, capturedPiece: Piece, originPosition: Position, targetPosition: Position): Array<Piece>
+  {
+    const others = new Array<Piece>();
+    for (const tile of tiles)
+    {
+      if (PositionUtil.matches(tile, piece.getPosition())) continue; // this piece, so skip
+      if (tile.getPiece() == null) continue; // no piece here
+      if (tile.getPiece().getType() != piece.getType() || tile.getPiece().getColor() != piece.getColor()) continue; // not same type or not same color
+      if (this.canReachTargetPosition(originPosition, targetPosition, tile.getPiece(), capturedPiece, tiles)) others.push(tile.getPiece());
+    }
+    return others;
+  }
 }
 
-export interface PGN {
+export interface PGN
+{
   header: any,
   history: PGNHistory
 }
 
-export interface PGNHistory {
+export interface PGNHistory
+{
   moves: Array<PGNMove>
 }
 
-export interface PGNMove {
+export interface PGNMove
+{
  color: 'w' | 'b',
  from: string,
  to: string,
@@ -65,11 +238,13 @@ export interface PGNMove {
 /**
  * Maps Pieces to their PGN equivalent
  */
-export class PGNPieceMap {
+export class PGNPieceMap
+{
 
   readonly pieceMap = new Map<PieceType, string>();
 
-  constructor() {
+  constructor()
+  {
     this.pieceMap.set(PieceType.BISHOP, "B");
     this.pieceMap.set(PieceType.KING, "K");
     this.pieceMap.set(PieceType.ROOK, "R");
@@ -78,13 +253,17 @@ export class PGNPieceMap {
     this.pieceMap.set(PieceType.KNIGHT, "N");
   }
 
-  public static get(type: PieceType) {
+  public static get(type: PieceType)
+  {
     return new PGNPieceMap().pieceMap.get(type);
   }
 
-  public static toPieceType(pgnPiece: string): PieceType {
-    for (const p of new PGNPieceMap().pieceMap.entries()) {
-      if (p[1] == pgnPiece.toUpperCase()) {
+  public static toPieceType(pgnPiece: string): PieceType
+  {
+    for (const p of new PGNPieceMap().pieceMap.entries())
+    {
+      if (p[1] == pgnPiece.toUpperCase())
+      {
         return p[0];
       }
     }
@@ -93,29 +272,31 @@ export class PGNPieceMap {
 
 }
 
+//
+
 /**
  * Maps moves on this Chess board to a PGN style notation
  */
-export class PGNMoveMap {
+export class PGNMoveMap
+{
 
   static xMap = [ '', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-  public static get(position: Position, color: PieceColor): string {
-    let move = '';
-    if (color == PieceColor.WHITE) {
-      move = String(this.xMap[position.x]) + String(position.y.toFixed(0));
-    }
-    else { // invert both x and y
-      move = String(this.xMap[ Math.abs(position.x - 9) ]) + String( Math.abs(position.y - 9).toFixed(0) );
-    }
-    return move;
+  public static get(position: Position, color: PieceColor): string
+  {
+    return String(this.xMap[position.x]) + String(position.y.toFixed(0));
   }
 }
+
+//   d4  e5  dxe5  b5  e6  b4  exd7+  Qxd7  Qxd7+  Nxd7  Be3  Bd6  Nc3  b3  O-O-O  Rb8  axb3  Ke7  Bg5+  Ke6  Nf3  Nb6  Nd4+  Kd7  g3  Rb7  Bh3+  Ke8  Bxc8  Nd7  Bxb7  c5  Bc6  f5  Bb5  c4  bxc4  Ne7  c5  Kf7  cxd6  g6  dxe7  f4  e8=Q+  Kxe8  Ne6  a5  Bf6  a4  Bxh8  f3  exf3  a3  Rhe1  Kf7  bxa3  Kg8  Nc5  Nxc5  Re8+  Kf7  Rde1  g5  Bc4+  Kg6  Rg8+  Kh5  Bf7+  Kh6  Re6+  Nxe6  Bxe6  Kh5  a4  Kh6  a5  Kh5  a6  Kh6  a7  Kh5  a8=Q  Kh6  Qf8+  Kh5
+
+
 
 /**
  * Maps this Chess structure to the PGN standard
  */
-export class PGNMapper {
+export class PGNMapper
+{
 
   public static get(type: PieceType, color: PieceColor, current: Position, target: Position, capture: boolean): string {
     let pgn =
