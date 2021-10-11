@@ -1,4 +1,4 @@
-import { Tile } from "./tile";
+import { Tile } from "./chess";
 
 export class Rank extends Array<Tile>
 {
