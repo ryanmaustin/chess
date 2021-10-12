@@ -68,11 +68,7 @@ export class Board {
         {
           if (p instanceof Pawn)
           {
-            if (enPassant.available)
-            {
-              p.enPassantNowAllowed();
-            }
-            else
+            if (!enPassant.available)
             {
               p.enPassantNoLongerAllowed();
             }

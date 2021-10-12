@@ -49,13 +49,14 @@ export class King extends Piece
 
     let sign = this.position.x > rookPosition.x ? -1 : 1;
 
-    // Ensure that no tiles between rook and king are occupied or reachable by an enemy piece
+    // Ensure that the two tiles next to the king are not reachable by an enemy piece and that
+    // there are no occupied tiles between the rook and king
     for (let i = 1; i < Math.abs(this.position.x - rookPosition.x); i++)
     {
       const tile = PositionUtil.getTileAt(tiles, { x: (sign * i) + this.position.x, y: 1 });
       if (tile == null) return false;
       if (tile.getPiece() != null) return false;
-      if (this.enemyPieceCanReach(tile, tiles)) return false;
+      if (i < 3 && this.enemyPieceCanReach(tile, tiles)) return false;
     }
 
     const rooksTile = PositionUtil.getTileAt(tiles, rookPosition);
