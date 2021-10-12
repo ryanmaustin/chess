@@ -16,6 +16,20 @@ export enum PieceColor
   BLACK = 'BLACK'
 }
 
+export interface Direction {
+   x: 1 | -1 | 0,
+   y: 1 | -1 | 0
+}
+
+export const N = <Direction> { x: 0, y: 1 };
+export const NE = <Direction> { x: 1, y: 1 };
+export const E = <Direction> { x: 1, y: 0 };
+export const SE = <Direction> { x: 1, y: -1 };
+export const S = <Direction> { x: 0, y: -1 };
+export const SW = <Direction> { x: -1, y: -1 };
+export const W = <Direction> { x: -1, y: 0 };
+export const NW = <Direction> { x: -1, y: 1 };
+
 export abstract class Piece
 {
   protected _captured: boolean = false;
@@ -92,7 +106,7 @@ export abstract class Piece
     // Remove moves that would put the king in check
     if (removeMovesThatPutKingInCheck)
     {
-      moves = this.filterOutMovesThatPutKingInCheck(
+      moves = this.filterOutMovesThatCheckKing(
         tiles,
         moves
       );
@@ -116,44 +130,140 @@ export abstract class Piece
     return validMoves;
   }
 
-  private filterOutMovesThatPutKingInCheck(tiles: Array<Tile>, moves: Array<Position>)
+  // private filterOutMovesThatPutKingInCheck(tiles: Array<Tile>, moves: Array<Position>)
+  // {
+  //   const legalMoves = new Array<Position>();
+  //   for (const move of moves) {
+  //     let legalMove = true;
+
+  //     // a move puts the king in check when on the opponent's next turn they could capture it
+  //     const opponentsPosition = PositionUtil.cloneBoard(tiles);
+
+  //     // make the move to achieve opponents pos
+  //     PositionUtil.getTileAt(opponentsPosition, this.position).setPiece(null);
+  //     PositionUtil.getTileAt(opponentsPosition, move).setPiece(this.getClone());
+
+  //     // Now check if any of the available moves of any of the oppenents pieces could potentially capture
+  //     // the king
+
+  //     for (const tile of opponentsPosition) {
+  //       if (tile.getPiece() == null || tile.getPiece().getColor() == this.color) continue;
+
+  //       const piece = tile.getPiece();
+
+  //       const availableMovesForOpponent = piece.availableMoves(opponentsPosition);
+  //       for (const availableMoveForOppponent of availableMovesForOpponent) {
+  //         const capturablePiece = PositionUtil.getTileAt(opponentsPosition, availableMoveForOppponent).getPiece();
+
+  //         if (capturablePiece != null && capturablePiece.getType() == PieceType.KING && capturablePiece.getColor() == this.color) {
+
+  //           // This move is considered illegal because it would put the king in check
+  //           legalMove = false;
+  //           break;
+  //         }
+  //       }
+  //       if (!legalMove) break;
+  //     }
+  //     // Move passed all checks and is legal
+  //     if (legalMove) legalMoves.push(move);
+  //   }
+  //   return legalMoves;
+  // }
+
+  private filterOutMovesThatCheckKing(tiles: Array<Tile>, moves: Array<Position>): Array<Position>
   {
     const legalMoves = new Array<Position>();
-    for (const move of moves) {
-      let legalMove = true;
+    for (const move of moves)
+    {
+      let illegalMove = false;
 
-      // a move puts the king in check when on the opponent's next turn they could capture it
-      const opponentsPosition = PositionUtil.cloneBoard(tiles);
+      const targetTile = PositionUtil.getTileAt(tiles, move);
+      const pieceAtTargetTile = targetTile.getPiece();
+      targetTile.setPiece(this);
+      const thisTile = PositionUtil.getTileAt(tiles, this.getPosition());
+      thisTile.setPiece(null);
 
-      // make the move to achieve opponents pos
-      PositionUtil.getTileAt(opponentsPosition, this.position).setPiece(null);
-      PositionUtil.getTileAt(opponentsPosition, move).setPiece(this.getClone());
+      if (this.isAttackedByAnyDirection(tiles) || this.isAttackedByKnight(tiles)) illegalMove = true;
 
-      // Now check if any of the available moves of any of the oppenents pieces could potentially capture
-      // the king
+      // Put back
+      targetTile.setPiece(pieceAtTargetTile);
+      thisTile.setPiece(this);
 
-      for (const tile of opponentsPosition) {
-        if (tile.getPiece() == null || tile.getPiece().getColor() == this.color) continue;
-
-        const piece = tile.getPiece();
-
-        const availableMovesForOpponent = piece.availableMoves(opponentsPosition);
-        for (const availableMoveForOppponent of availableMovesForOpponent) {
-          const capturablePiece = PositionUtil.getTileAt(opponentsPosition, availableMoveForOppponent).getPiece();
-
-          if (capturablePiece != null && capturablePiece.getType() == PieceType.KING && capturablePiece.getColor() == this.color) {
-
-            // This move is considered illegal because it would put the king in check
-            legalMove = false;
-            break;
-          }
-        }
-        if (!legalMove) break;
-      }
-      // Move passed all checks and is legal
-      if (legalMove) legalMoves.push(move);
+      if (!illegalMove) legalMoves.push(move);
     }
     return legalMoves;
+  }
+
+  private isAttackedByAnyDirection(tiles: Array<Tile>): boolean
+  {
+    return this.isAttackedByDirection(N, tiles) ||
+    this.isAttackedByDirection(NE, tiles) ||
+    this.isAttackedByDirection(E, tiles) ||
+    this.isAttackedByDirection(SE, tiles) ||
+    this.isAttackedByDirection(S, tiles) ||
+    this.isAttackedByDirection(SW, tiles) ||
+    this.isAttackedByDirection(W, tiles) ||
+    this.isAttackedByDirection(NW, tiles)
+  }
+
+  private isAttackedByDirection(direction: Direction, tiles: Array<Tile>): boolean
+  {
+    // Initial Position
+    let x = this.position.x;
+    let y = this.position.y;
+
+    while (x <= 8 && x >= 1 && y <= 8 && y >= 0)
+    {
+      const tile = PositionUtil.getTileAt(tiles, { x: x + direction.x, y: y + direction.y} );
+
+      if (tile.getPiece() != null)
+      {
+        if (tile.getPiece().getColor() == this.color) return false; // Protected by same color
+
+        // Queen can attack from any direction
+        if (tile.getPiece().getType() == PieceType.QUEEN) return true;
+
+        if (tile.getPiece().getType() == PieceType.BISHOP && this.isAttackedByBishop(direction)) return true;
+
+        if (tile.getPiece().getType() == PieceType.ROOK && this.isAttackedByRook(direction)) return true;
+
+        if (tile.getPiece().getType() == PieceType.PAWN && this.isAttackedByPawn(direction, tile.getPiece().getPosition())) return true;
+      }
+    }
+    return false;
+  }
+
+  private isAttackedByBishop(direction: Direction): boolean
+  {
+    // Diagonal if both units are 1
+    return Math.abs(direction.x) == Math.abs(direction.y);
+  }
+
+  private isAttackedByRook(direction: Direction): boolean
+  {
+    // H or V because only one unit is equal to 1
+    return Math.abs(direction.x) != Math.abs(direction.y);
+  }
+
+  private isAttackedByPawn(direction: Direction, pawnPosition: Position): boolean
+  {
+    // Invert so we can view from pawn's perspective and see if the inverted
+    // direction takes us to this's position
+    const inverted = { x: direction.x * -1, y: direction.y * -1 };
+    return ((pawnPosition.x + inverted.x) == this.position.x) &&
+      ((pawnPosition.y + inverted.y) == this.position.y);
+  }
+
+  private isAttackedByKnight(tiles: Array<Tile>): boolean
+  {
+    const knightThreatPositions = PositionUtil.knightMoves(this.position);
+    for (const threat of knightThreatPositions)
+    {
+      const tile = PositionUtil.getTileAt(tiles, threat);
+      if (tile == null) continue;
+      if (tile.getPiece() != null && tile.getPiece().getColor() != this.color && tile.getPiece().getType() == PieceType.KNIGHT) return true;
+    }
+    return false;
   }
 
   protected abstract availableMoves(tiles: Array<Tile>): Array<Position>;
@@ -275,6 +385,34 @@ export class PositionUtil {
     }
 
     return clonedBoard;
+  }
+
+  public static knightMoves(startingPosition: Position)
+  {
+    const moves = new Array<Position>();
+
+    const potentialMoves = [
+      [+2, -1],
+      [+2, +1],
+      [+1, -2],
+      [+1, +2],
+      [-2, -1],
+      [-2, +1],
+      [-1, +2],
+      [-1, -2],
+    ];
+
+    for (const potentialMove of potentialMoves)
+    {
+      const moveX = potentialMove[0] + startingPosition.x;
+      const moveY = potentialMove[1] + startingPosition.y;
+
+      if (moveX < 1 || moveX > 8 || moveY < 1 || moveY > 8) continue;
+
+      moves.push({x: moveX, y: moveY});
+    }
+
+    return moves;
   }
 
   public static matches(a: Tile | Position, b: Tile | Position): boolean
