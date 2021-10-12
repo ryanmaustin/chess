@@ -159,9 +159,12 @@ export class AppComponent implements OnInit {
   private calculateTile(piece: Piece, distance: { x: number, y: number }): Position
   {
     const deltaX = Math.round(Math.abs(distance.x / this.getTileWidth()));
-    const signX = distance.x > 0 ? 1 : distance.x == 0 ? 0 : -1;
+    let signX = distance.x > 0 ? 1 : distance.x == 0 ? 0 : -1;
+    signX = this.currentGame.board.isFlipped() ? -1 * signX : signX;
+
     const deltaY = Math.round(Math.abs(distance.y / this.getTileHeight()));
-    const signY = distance.y > 0 ? -1 : distance.y == 0 ? 0 : 1;
+    let signY = distance.y > 0 ? -1 : distance.y == 0 ? 0 : 1;
+    signY = this.currentGame.board.isFlipped() ? -1 * signY : signY;
 
     return <Position> { x: piece.getPosition().x + (signX * deltaX), y: piece.getPosition().y + (signY * deltaY) };
   }

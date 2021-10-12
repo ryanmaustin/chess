@@ -1,6 +1,6 @@
 .main {
-  background-color: #b3cdd1;
-  background-image: linear-gradient(315deg, #b3cdd1 0%, #9fa4c4 74%);
+  background-color: #1d1d1d;
+  background-image: linear-gradient(315deg, #1c1c1c 0%, #1d1d1d 74%);
 }
 
 .board-container {
@@ -9,8 +9,7 @@
 }
 
 .board {
-  background-color: #b1bfd8;
-  background-image: linear-gradient(315deg, #b1bfd8 0%, #6782b4 74%);
+  background-color: #3b4557;
 
   height: 45vw;
   width: 45vw;
@@ -18,38 +17,44 @@
   max-height: 70vh;
 
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
 }
 
 #moves {
   display: flex;
   height: 50px;
-  background-color: #b1bfd8;
-  background-image: linear-gradient(315deg, #728cbd 0%, #6782b4 74%);
   align-items: center;
   width: 45vw;
   max-width: 70vh;
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+  background-color: #3b4557;
+
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 #moveHistory {
   height: 100%;
   overflow-x: auto;
-  background-color: rgba(106, 93, 118, 0.15);
+  background-color: #3b4557;
   color: white;
   align-items: center;
-  text-align: center;
+  text-align: left;
+
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 .board-options {
   position: fixed;
-  background-color: #6a93cb;
-  background-image: linear-gradient(315deg, #6a93cb 0%, #a4bfef 74%);
+  background-color: #3b4557;
+  background-image: linear-gradient(315deg, #393f4a 0%, #3b4557 74%);
   height: 5rem;
-  width: 95%;
+  width: 100%;
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
   align-items: center;
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
 }
 
 .board-options-group {
@@ -177,4 +182,32 @@
 
 .white-tile {
   background-color: white;
+}
+
+.spacer-bottom {
+  margin-top: auto;
+}
+
+@media only screen and (max-width: 1000px) {
+
+  .board {
+    height: 100vw;
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100vw;
+
+    margin-bottom: 0 !important;
+  }
+
+  .spacer-bottom {
+    margin-top: 6rem;
+  }
+
+  #moves {
+    width: 100vw;
+  }
+
+  .board-options-group {
+    flex-wrap:wrap-reverse;
+  }
 }

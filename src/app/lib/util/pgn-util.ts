@@ -74,7 +74,7 @@ export class PGNUtil
       if (tile.getPiece() == null) continue;
       if (tile.getPiece().getColor() != move.movingPiece.getColor()) continue;
 
-      for (const availableMove of tile.getPiece().getAvailableMoves( tiles ))
+      for (const availableMove of tile.getPiece().getAvailableMoves(tiles, false))
       {
         const availableTile = PositionUtil.getTileAt(tiles, availableMove);
         if (availableTile.getPiece() == null) continue;

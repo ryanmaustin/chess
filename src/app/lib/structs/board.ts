@@ -34,6 +34,8 @@ export class Board {
   public tiles: Array<Tile>;
   public turn: PieceColor = PieceColor.WHITE;
 
+  private flipped: boolean = false;
+
   private whitePieces: Array<Piece>;
   private blackPieces: Array<Piece>;
   private whiteEnPassantAvailable: BehaviorSubject<EnPassant> = new BehaviorSubject<EnPassant>(null);
@@ -302,7 +304,7 @@ export class Board {
     const attackersPieces = this.getPieces(color);
     for (const attackersPiece of attackersPieces)
     {
-      for (const move of attackersPiece.getAvailableMoves(this.tiles))
+      for (const move of attackersPiece.getAvailableMoves(this.tiles, false))
       {
         const tile = PositionUtil.getTileAt(this.tiles, move);
         if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING)
@@ -319,19 +321,21 @@ export class Board {
     if (king.getMoves() != 0) return;
     let distance = destinationTile.getPosition().x - currentTile.getPosition().x;
 
+    let rank = king.getColor() == PieceColor.BLACK ? 8 : 1;
+
     if (Math.abs(distance) > 1)
     {
       // King moved right, so move right rook to the left of the king
       if (distance > 0) {
-        const rookTile = PositionUtil.getTileAt(this.tiles, { x: 8, y: 1 });
-        const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x - 1, y: 1 });
+        const rookTile = PositionUtil.getTileAt(this.tiles, { x: 8, y: rank });
+        const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x - 1, y: rank });
         destTile.setPiece(rookTile.getPiece());
         rookTile.setPiece(null);
 
         return king.getColor() == PieceColor.BLACK ? 'O-O-O' : 'O-O';
       } else {
-        const rookTile = PositionUtil.getTileAt(this.tiles, { x: 1, y: 1 });
-        const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x + 1, y: 1 });
+        const rookTile = PositionUtil.getTileAt(this.tiles, { x: 1, y: rank });
+        const destTile = PositionUtil.getTileAt(this.tiles, { x: destinationTile.getPosition().x + 1, y: rank });
         destTile.setPiece(rookTile.getPiece());
         rookTile.setPiece(null);
         return king.getColor() == PieceColor.BLACK ? 'O-O' : 'O-O-O';
@@ -397,6 +401,33 @@ export class Board {
 
   public getTurn(): PieceColor {
     return this.turn;
+  }
+
+  /**
+   * Flips the board for display purposes only (when playing black)
+   */
+  public flip()
+  {
+    this.flipped = !this.flipped;
+    for (let i = 0; i < 4; i++)
+    {
+      const topRank = this.ranks[i];
+      const bottomRank = this.ranks[Math.abs(i - 7)]
+
+      for (let j = 0; j < 8; j++)
+      {
+        // Swap and reverse
+        const topTile = topRank[j];
+        const bottomTile = bottomRank[7 - j];
+        topRank[j] = bottomTile;
+        bottomRank[7 - j] = topTile;
+      }
+    }
+  }
+
+  public isFlipped()
+  {
+    return this.flipped;
   }
 
   public static create(type: PieceType, color: PieceColor): Piece

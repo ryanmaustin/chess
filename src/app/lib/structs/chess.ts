@@ -292,6 +292,15 @@ export class PositionUtil {
     return (<Position>aPos).x == (<Position>bPos).x && (<Position>aPos).y == (<Position>bPos).y;
   }
 
+  /**
+   * When the board is flipped, we need to invert the position to
+   * get the relative position (to the player).
+   */
+  public static invert(position: Position)
+  {
+    return { x: Math.abs(position.x - 9), y: Math.abs(position.y - 9) };
+  }
+
 }
 
 export class Tile {

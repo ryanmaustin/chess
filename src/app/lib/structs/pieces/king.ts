@@ -32,12 +32,12 @@ export class King extends Piece
 
     // Castle Left Side
     if (this.canCastle(tiles, { x: 1, y: 1 })) {
-      moves.push({ x: this.position.x - 2, y: 1 });
+      moves.push({ x: this.position.x - 2, y: this.color == PieceColor.BLACK ? 8 : 1 });
     }
 
     // Castle Right Side
     if (this.canCastle(tiles, { x: 8, y: 1 })) {
-      moves.push({ x: this.position.x + 2, y: 1 });
+      moves.push({ x: this.position.x + 2, y: this.color == PieceColor.BLACK ? 8 : 1 });
     }
 
     return moves;
@@ -53,7 +53,7 @@ export class King extends Piece
     // there are no occupied tiles between the rook and king
     for (let i = 1; i < Math.abs(this.position.x - rookPosition.x); i++)
     {
-      const tile = PositionUtil.getTileAt(tiles, { x: (sign * i) + this.position.x, y: 1 });
+      const tile = PositionUtil.getTileAt(tiles, { x: (sign * i) + this.position.x, y: this.color == PieceColor.BLACK ? 8 : 1 });
       if (tile == null) return false;
       if (tile.getPiece() != null) return false;
       if (i < 3 && this.enemyPieceCanReach(tile, tiles)) return false;

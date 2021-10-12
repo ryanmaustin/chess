@@ -112,12 +112,11 @@ export class Game
 
     if (this.computerOn && this.playerColor == PieceColor.BLACK)
     {
+      this.board.flip();
+      console.log(this.board.ranks);
       this.makeComputerMove();
     }
-    else
-    {
-      this.ready = true;
-    }
+    this.ready = true;
   }
 
   public makeComputerMove()
