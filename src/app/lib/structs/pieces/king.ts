@@ -30,14 +30,16 @@ export class King extends Piece
     // W
     for (const move of PositionUtil.directionalMoves(tiles, this, -1, 0, true)) moves.push(move);
 
+    const rank = this.color == PieceColor.BLACK ? 8 : 1;
+
     // Castle Left Side
-    if (this.canCastle(tiles, { x: 1, y: 1 })) {
-      moves.push({ x: this.position.x - 2, y: this.color == PieceColor.BLACK ? 8 : 1 });
+    if (this.canCastle(tiles, { x: 1, y: rank })) {
+      moves.push({ x: this.position.x - 2, y: rank });
     }
 
     // Castle Right Side
-    if (this.canCastle(tiles, { x: 8, y: 1 })) {
-      moves.push({ x: this.position.x + 2, y: this.color == PieceColor.BLACK ? 8 : 1 });
+    if (this.canCastle(tiles, { x: 8, y: rank })) {
+      moves.push({ x: this.position.x + 2, y: rank });
     }
 
     return moves;

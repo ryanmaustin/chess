@@ -268,9 +268,11 @@ export class Board {
     let potentialWinner = PieceColor.WHITE;
     if (this.turn == PieceColor.WHITE) potentialWinner = PieceColor.BLACK;
 
+    // First do a simple check if the king is in check before looking at all
+
     if (this.getCurrentTurnsAvailableMoves().length == 0)
     {
-      const checkmate = this.kingIsCapturableBy(potentialWinner);
+      const checkmate = this.kingIsAttacked(this.turn);
 
       if (emitMate)
       {
@@ -299,21 +301,10 @@ export class Board {
     return availMoves;
   }
 
-  private kingIsCapturableBy(color: PieceColor): boolean
+  private kingIsAttacked(color: PieceColor): boolean
   {
-    const attackersPieces = this.getPieces(color);
-    for (const attackersPiece of attackersPieces)
-    {
-      for (const move of attackersPiece.getAvailableMoves(this.tiles, false))
-      {
-        const tile = PositionUtil.getTileAt(this.tiles, move);
-        if (tile != null && tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING)
-        {
-          return true;
-        }
-      }
-    }
-    return false;
+    const king = PositionUtil.getKing(color, this.tiles);
+    return king.isAttackedByAnyDirection(this.tiles) || king.isAttackedByKnight(this.tiles);
   }
 
   private handleCastle(king: King, currentTile: Tile, destinationTile: Tile)

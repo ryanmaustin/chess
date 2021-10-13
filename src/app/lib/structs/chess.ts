@@ -1,3 +1,4 @@
+import { King } from "./pieces/king";
 import { Position } from "./position";
 
 export enum PieceType
@@ -106,7 +107,7 @@ export abstract class Piece
     // Remove moves that would put the king in check
     if (removeMovesThatPutKingInCheck)
     {
-      moves = this.filterOutMovesThatCheckKing(
+      moves = this.filterOutMovesThatPutKingInCheck(
         tiles,
         moves
       );
@@ -130,49 +131,12 @@ export abstract class Piece
     return validMoves;
   }
 
-  // private filterOutMovesThatPutKingInCheck(tiles: Array<Tile>, moves: Array<Position>)
-  // {
-  //   const legalMoves = new Array<Position>();
-  //   for (const move of moves) {
-  //     let legalMove = true;
-
-  //     // a move puts the king in check when on the opponent's next turn they could capture it
-  //     const opponentsPosition = PositionUtil.cloneBoard(tiles);
-
-  //     // make the move to achieve opponents pos
-  //     PositionUtil.getTileAt(opponentsPosition, this.position).setPiece(null);
-  //     PositionUtil.getTileAt(opponentsPosition, move).setPiece(this.getClone());
-
-  //     // Now check if any of the available moves of any of the oppenents pieces could potentially capture
-  //     // the king
-
-  //     for (const tile of opponentsPosition) {
-  //       if (tile.getPiece() == null || tile.getPiece().getColor() == this.color) continue;
-
-  //       const piece = tile.getPiece();
-
-  //       const availableMovesForOpponent = piece.availableMoves(opponentsPosition);
-  //       for (const availableMoveForOppponent of availableMovesForOpponent) {
-  //         const capturablePiece = PositionUtil.getTileAt(opponentsPosition, availableMoveForOppponent).getPiece();
-
-  //         if (capturablePiece != null && capturablePiece.getType() == PieceType.KING && capturablePiece.getColor() == this.color) {
-
-  //           // This move is considered illegal because it would put the king in check
-  //           legalMove = false;
-  //           break;
-  //         }
-  //       }
-  //       if (!legalMove) break;
-  //     }
-  //     // Move passed all checks and is legal
-  //     if (legalMove) legalMoves.push(move);
-  //   }
-  //   return legalMoves;
-  // }
-
-  private filterOutMovesThatCheckKing(tiles: Array<Tile>, moves: Array<Position>): Array<Position>
+  private filterOutMovesThatPutKingInCheck(tiles: Array<Tile>, moves: Array<Position>): Array<Position>
   {
     const legalMoves = new Array<Position>();
+    const king = PositionUtil.getKing(this.color, tiles);
+    const thisTile = PositionUtil.getTileAt(tiles, this.getPosition());
+
     for (const move of moves)
     {
       let illegalMove = false;
@@ -180,21 +144,20 @@ export abstract class Piece
       const targetTile = PositionUtil.getTileAt(tiles, move);
       const pieceAtTargetTile = targetTile.getPiece();
       targetTile.setPiece(this);
-      const thisTile = PositionUtil.getTileAt(tiles, this.getPosition());
       thisTile.setPiece(null);
 
-      if (this.isAttackedByAnyDirection(tiles) || this.isAttackedByKnight(tiles)) illegalMove = true;
+      if (king.isAttackedByAnyDirection(tiles) || king.isAttackedByKnight(tiles)) illegalMove = true;
 
       // Put back
       targetTile.setPiece(pieceAtTargetTile);
       thisTile.setPiece(this);
 
-      if (!illegalMove) legalMoves.push(move);
+      if (!illegalMove) { legalMoves.push(move); }
     }
     return legalMoves;
   }
 
-  private isAttackedByAnyDirection(tiles: Array<Tile>): boolean
+  public isAttackedByAnyDirection(tiles: Array<Tile>): boolean
   {
     return this.isAttackedByDirection(N, tiles) ||
     this.isAttackedByDirection(NE, tiles) ||
@@ -203,49 +166,58 @@ export abstract class Piece
     this.isAttackedByDirection(S, tiles) ||
     this.isAttackedByDirection(SW, tiles) ||
     this.isAttackedByDirection(W, tiles) ||
-    this.isAttackedByDirection(NW, tiles)
+    this.isAttackedByDirection(NW, tiles);
   }
 
-  private isAttackedByDirection(direction: Direction, tiles: Array<Tile>): boolean
+  public isAttackedByDirection(direction: Direction, tiles: Array<Tile>): boolean
   {
     // Initial Position
     let x = this.position.x;
     let y = this.position.y;
+    let tile = PositionUtil.getTileAt(tiles, { x: x + direction.x, y: y + direction.y });
 
-    while (x <= 8 && x >= 1 && y <= 8 && y >= 0)
+    while (tile != null)
     {
-      const tile = PositionUtil.getTileAt(tiles, { x: x + direction.x, y: y + direction.y} );
+      if (tile == null) break;
 
       if (tile.getPiece() != null)
       {
         if (tile.getPiece().getColor() == this.color) return false; // Protected by same color
 
         // Queen can attack from any direction
-        if (tile.getPiece().getType() == PieceType.QUEEN) return true;
+        if (tile.getPiece().getType() == PieceType.QUEEN) { return true; }
 
-        if (tile.getPiece().getType() == PieceType.BISHOP && this.isAttackedByBishop(direction)) return true;
+        else if (tile.getPiece().getType() == PieceType.BISHOP && this.isAttackedByBishop(direction)) { return true; }
 
-        if (tile.getPiece().getType() == PieceType.ROOK && this.isAttackedByRook(direction)) return true;
+        else if (tile.getPiece().getType() == PieceType.ROOK && this.isAttackedByRook(direction)) { return true; }
 
-        if (tile.getPiece().getType() == PieceType.PAWN && this.isAttackedByPawn(direction, tile.getPiece().getPosition())) return true;
+        else if (tile.getPiece().getType() == PieceType.PAWN && this.isAttackedByPawn(direction, tile.getPiece().getPosition())) { return true; }
+
+        else // Whatever piece is here cannot capture and is therefore blocking
+        {
+          return false;
+        }
       }
+      x += direction.x == 0 ? 0 : direction.x;
+      y += direction.y == 0 ? 0 : direction.y;
+      tile = PositionUtil.getTileAt(tiles, { x: x, y: y } );
     }
     return false;
   }
 
-  private isAttackedByBishop(direction: Direction): boolean
+  public isAttackedByBishop(direction: Direction): boolean
   {
     // Diagonal if both units are 1
     return Math.abs(direction.x) == Math.abs(direction.y);
   }
 
-  private isAttackedByRook(direction: Direction): boolean
+  public isAttackedByRook(direction: Direction): boolean
   {
     // H or V because only one unit is equal to 1
     return Math.abs(direction.x) != Math.abs(direction.y);
   }
 
-  private isAttackedByPawn(direction: Direction, pawnPosition: Position): boolean
+  public isAttackedByPawn(direction: Direction, pawnPosition: Position): boolean
   {
     // Invert so we can view from pawn's perspective and see if the inverted
     // direction takes us to this's position
@@ -254,7 +226,7 @@ export abstract class Piece
       ((pawnPosition.y + inverted.y) == this.position.y);
   }
 
-  private isAttackedByKnight(tiles: Array<Tile>): boolean
+  public isAttackedByKnight(tiles: Array<Tile>): boolean
   {
     const knightThreatPositions = PositionUtil.knightMoves(this.position);
     for (const threat of knightThreatPositions)
@@ -385,6 +357,15 @@ export class PositionUtil {
     }
 
     return clonedBoard;
+  }
+
+  public static getKing(color: PieceColor, tiles: Array<Tile>)
+  {
+    for (const tile of tiles)
+    {
+      if (tile.getPiece() != null && tile.getPiece().getType() == PieceType.KING && tile.getPiece().getColor() == color) return <King> tile.getPiece();
+    }
+    throw Error("No King Exists?!");
   }
 
   public static knightMoves(startingPosition: Position)

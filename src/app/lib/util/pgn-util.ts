@@ -57,7 +57,7 @@ export class PGNUtil
       let distance = move.destinationTile.getPosition().x - move.currentTile.getPosition().x;
       if (Math.abs(distance) > 1)
       {
-        pgn = this.pgnForCastling(<King>(move.movingPiece), distance);
+        pgn = this.pgnForCastling(distance);
       }
     }
     pgn = this.resolveAmbiguities(move, pgn, tiles) +
@@ -84,16 +84,9 @@ export class PGNUtil
     return false;
   }
 
-  private static pgnForCastling(king: King, distance: number): string
+  private static pgnForCastling(distance: number): string
   {
-    if (distance > 0)
-    {
-      return king.getColor() == PieceColor.BLACK ? 'O-O-O' : 'O-O';
-    }
-    else
-    {
-      return king.getColor() == PieceColor.BLACK ? 'O-O' : 'O-O-O';
-    }
+    return distance > 0 ? 'O-O' : 'O-O-O';
   }
 
   private static resolveAmbiguities(move: Move, currentPgn: string, tiles: Array<Tile>): string
@@ -289,7 +282,6 @@ export class PGNMoveMap
 }
 
 //   d4  e5  dxe5  b5  e6  b4  exd7+  Qxd7  Qxd7+  Nxd7  Be3  Bd6  Nc3  b3  O-O-O  Rb8  axb3  Ke7  Bg5+  Ke6  Nf3  Nb6  Nd4+  Kd7  g3  Rb7  Bh3+  Ke8  Bxc8  Nd7  Bxb7  c5  Bc6  f5  Bb5  c4  bxc4  Ne7  c5  Kf7  cxd6  g6  dxe7  f4  e8=Q+  Kxe8  Ne6  a5  Bf6  a4  Bxh8  f3  exf3  a3  Rhe1  Kf7  bxa3  Kg8  Nc5  Nxc5  Re8+  Kf7  Rde1  g5  Bc4+  Kg6  Rg8+  Kh5  Bf7+  Kh6  Re6+  Nxe6  Bxe6  Kh5  a4  Kh6  a5  Kh5  a6  Kh6  a7  Kh5  a8=Q  Kh6  Qf8+  Kh5
-
 
 
 /**

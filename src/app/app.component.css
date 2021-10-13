@@ -3,45 +3,64 @@
   background-image: linear-gradient(315deg, #1c1c1c 0%, #1d1d1d 74%);
 }
 
-.board-container {
+.chess-section {
   display: flex;
   align-items: center;
 }
 
-.board {
+#chessBoard {
+  margin-top:  auto;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: auto;
+  width: 45vw;
+  height: 45vw;
+  display: block;
+
+  max-width: 60vh;
+  max-height: 60vh;
+}
+
+#gameBoard {
   background-color: #3b4557;
 
-  height: 45vw;
-  width: 45vw;
-  max-width: 70vh;
-  max-height: 70vh;
-
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+
+  height: 100%;
+  width: 100%;
 
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
 
-#moves {
+#movesContainer {
+  position: absolute;
+  margin-top: -50px;
+
   display: flex;
   height: 50px;
   align-items: center;
-  width: 45vw;
-  max-width: 70vh;
-  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
-  background-color: #3b4557;
+  width: 100%;
+}
 
+.move-history-container {
+  height: 100%;
+  width: 100%;
+  background-color: #3b4557;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
 
 #moveHistory {
   height: 100%;
-  overflow-x: auto;
   background-color: #3b4557;
   color: white;
   align-items: center;
+  overflow-x: auto;
   text-align: left;
+
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
@@ -190,21 +209,12 @@
 
 @media only screen and (max-width: 1000px) {
 
-  .board {
-    height: 100vw;
-    width: 100vw;
-    max-width: 100vw;
-    max-height: 100vw;
-
-    margin-bottom: 0 !important;
+  #chessBoard {
+    margin-bottom: 5rem;
   }
 
   .spacer-bottom {
     margin-top: 6rem;
-  }
-
-  #moves {
-    width: 100vw;
   }
 
   .board-options-group {

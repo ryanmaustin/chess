@@ -99,6 +99,8 @@ export class AppComponent implements OnInit {
     if (piece.getColor() != this.currentGame.board.getTurn()) return;
 
     this.currentGame.selectPiece(piece);
+    this.cd.detectChanges();
+    this.cd.markForCheck();
   }
 
   public isAvailableMove(tile: Tile): boolean
@@ -233,6 +235,11 @@ export class AppComponent implements OnInit {
   public newGameOptionSelected(): boolean
   {
     return this.gameStartOption == GameOption_New_Game;
+  }
+
+  public chessBoardLengthPx()
+  {
+    return document.getElementById('chessBoard').clientWidth + 'px';
   }
 
 }
