@@ -15,13 +15,25 @@ import { DndModule } from 'ngx-drag-drop';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
+
+import { InjectableRxStompConfig, RxStompService, rxStompServiceFactory } from '@stomp/ng2-stompjs';
+import { myRxStompConfig } from './lib/config/rx-stomp-config';
+
+import { GameService } from './lib/services/game.service';
+import { GamePromptService } from './lib/services/game-prompts.service';
+
+import { GamePromptComponent } from './lib/services/game-prompt.component';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    GamePromptComponent
   ],
   imports: [
     BrowserModule,
+    CommonModule,
     NgbModule,
     BrowserAnimationsModule,
     MatCheckboxModule,
@@ -36,10 +48,25 @@ import { MatSelectModule } from '@angular/material/select';
     ReactiveFormsModule,
     MatInputModule,
     MatButtonModule,
-    MatSelectModule
+    MatSelectModule,
+    HttpClientModule
   ],
-  providers: [],
-  bootstrap: [AppComponent]
+  providers: [
+    {
+      provide: InjectableRxStompConfig,
+      useValue: myRxStompConfig,
+    },
+    {
+      provide: RxStompService,
+      useFactory: rxStompServiceFactory,
+      deps: [InjectableRxStompConfig],
+    },
+    GameService,
+    GamePromptService,
+  ],
+  bootstrap: [
+    AppComponent
+  ]
 })
 export class AppModule {
 

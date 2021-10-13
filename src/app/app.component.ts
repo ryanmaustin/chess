@@ -7,6 +7,7 @@ import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dial
 import { CdkDragEnd, CdkDragMove, CdkDragStart } from '@angular/cdk/drag-drop';
 import { startCase } from 'lodash';
 import { Game } from './lib/structs/game';
+import { GameService } from './lib/services/game.service';
 
 const GameOption_PGN = "PGN";
 const GameOption_New_Game = "New Game"
@@ -16,7 +17,8 @@ const GameOption_New_Game = "New Game"
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit
+{
   title = 'Chess';
 
   public gameOn: boolean = false;
@@ -32,7 +34,11 @@ export class AppComponent implements OnInit {
   private mateSubscription$: Subscription;
   private promotionSubscription: Subscription;
 
-  constructor(public dialog: MatDialog, private cd: ChangeDetectorRef)
+  constructor(
+    public dialog: MatDialog,
+    private cd: ChangeDetectorRef,
+    private gameService: GameService,
+  )
   {
     this.games = new Array<Game>();
   }
@@ -124,17 +130,23 @@ export class AppComponent implements OnInit {
 
   public startNewGame()
   {
-    this.currentGame = new Game();
-    if (this.playerIsWhite) { this.currentGame.asWhite(); }
-    else { this.currentGame.asBlack(); }
+    const playerColor = this.playerIsWhite ? PieceColor.WHITE : PieceColor.BLACK;
+    this.gameService.challenge(playerColor).subscribe(
+      (challenge) =>
+      {
+        this.currentGame = new Game();
+        if (challenge.challengerPlaysAs == PieceColor.WHITE) { this.currentGame.asWhite(); }
+        else { this.currentGame.asBlack(); }
 
-    this.currentGame.computerOn = this.computerOn;
-    this.games.push(this.currentGame);
-    this.currentGame.startGame();
-    this.changeGame(this.games.length - 1);
-    console.warn("Game Started", this.currentGame, this.playerIsWhite);
-    this.cd.detectChanges();
-    this.cd.markForCheck();
+        this.currentGame.computerOn = this.computerOn;
+        this.games.push(this.currentGame);
+        this.currentGame.startGame();
+        this.changeGame(this.games.length - 1);
+        console.warn("Game Started", this.currentGame, this.playerIsWhite);
+        this.cd.detectChanges();
+        this.cd.markForCheck();
+      }
+    );
   }
 
   public dragStart(event: CdkDragStart, piece: Piece)
