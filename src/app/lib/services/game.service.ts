@@ -1,25 +1,40 @@
-import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { RxStompService } from "@stomp/ng2-stompjs";
-import { Subject } from "rxjs";
-import { GameRequest } from "../structs/api";
-import { PieceColor } from "../structs/chess";
+import { BehaviorSubject, Subject, Subscription } from "rxjs";
+import { GameRequest, MoveRequest, SAN } from "../structs/api";
+import { Piece, PieceColor, PieceType } from "../structs/chess";
 import { GamePromptService } from "./game-prompts.service";
 
+/**
+ * This Service:
+ * - Sends Game Requests
+ * - Responds to Game Requests
+ * - Initiates connection to Game Engine through Web Sockets
+ * - Emits when connected to the Game Engine (the player can now play)
+ */
 @Injectable({ providedIn: 'root'})
 export class GameService
 {
   private playerId: string;
 
-  public challengeAccepted$: Subject<GameRequest>;
+  public gameStarted$: Subject<GameRequest>;
+
+  public connectedToGameEngine$ = new BehaviorSubject<boolean>(false);
+
+  public moves$: Subject<MoveRequest>;
+
+  private waitingForAnOpponent: boolean = true;
+
+  private listenForMoves: Subscription;
+  private listenForRequests: Subscription;
 
   constructor(
-    private http: HttpClient,
     private rxStompService: RxStompService,
     private gamePrompts: GamePromptService
   )
   {
-    this.challengeAccepted$ = new Subject<GameRequest>();
+    this.gameStarted$ = new Subject<GameRequest>();
+    this.moves$ = new Subject<MoveRequest>();
     this.init();
   }
 
@@ -31,22 +46,74 @@ export class GameService
       () =>
       {
         console.warn("Connected to Game Service");
+        this.startListeningForMoves();
+        this.startListeningForRequests();
       }
     );
+
+    this.rxStompService.connectionState$.subscribe(
+      (state) =>
+      {
+        if (state == 3)
+        {
+          this.stopListeningForMoves();
+          this.stopListeningForRequests();
+        }
+      }
+    );
+
+    this.rxStompService
 
     this.rxStompService.serverHeaders$.subscribe(
       (headers) =>
       {
         this.playerId = String(headers['user-name']);
         console.warn("Logged into Game Service as Player [" + this.playerId + "]");
-        this.startListeningForGames();
+        this.connectedToGameEngine$.next(true);
       }
     );
   }
 
-  private startListeningForGames()
+  /**
+   * - Player A sends Game Request to B (sent on '/app/game/request', received on '/players/game/requests')
+   * - Player B responds to the Game Request to A (sent on '/app/game/respond', received on '/players/game/requests)
+   * - Player A recieves response.
+   */
+  private handleReceivedGameRequest(gameRequest: GameRequest)
   {
-    this.rxStompService.watch('/players/games/requests').subscribe(
+    // If this Player's ID matches the gameRequest's Challenger ID, then
+    // we know that this is a RESPONSE from another player, otherwise
+    // treat it as a REQUEST to this player
+    if (gameRequest.challengerPlayerId == this.playerId)
+    {
+      console.debug(`Game Request Accepted: ${gameRequest.challengerPlayerId} vs ${gameRequest.opponentPlayerId}`);
+      this.gameStarted$.next(gameRequest);
+    }
+    else // this is a new game request for this player
+    {
+      if (this.waitingForAnOpponent)
+      {
+        this.gameStarted$.next(gameRequest);
+      }
+      else
+      {
+        this.gamePrompts.newGameRequested(
+          gameRequest.challengerPlayerId,
+          (accepted) =>
+          {
+            this.respondToGameRequest(gameRequest, accepted)
+          }
+        );
+      }
+    }
+  }
+
+  /**
+   * Subscribe to Game Requests from other Players
+   */
+  private startListeningForRequests()
+  {
+    this.rxStompService.watch('/players/game/requests').subscribe(
       (message) =>
       {
         const gameRequest = <GameRequest> JSON.parse(message.body)
@@ -56,51 +123,77 @@ export class GameService
     );
   }
 
-  private handleReceivedGameRequest(gameRequest: GameRequest)
+  private startListeningForMoves()
   {
-    // Assume not accepted means that this is a new challenge
-    // for now. Once I no longer allow a player to challenge
-    // themselves, then I can handle this properly.
-    if (!gameRequest.accepted)
+    this.rxStompService.watch('/players/game/move').subscribe(
+      (message) =>
+      {
+        const move = <MoveRequest> JSON.parse(message.body)
+
+        if (move.playerId == this.playerId) return; // ignore for now
+
+        console.warn("Recieved Move: ", move);
+        this.moves$.next(move);
+      }
+    );
+  }
+
+  private stopListeningForMoves()
+  {
+    if (this.listenForMoves)
     {
-      this.gamePrompts.newGameRequested(
-        gameRequest.challengerPlayerId,
-        (accepted) =>
-        {
-          this.respondToGameRequest(gameRequest, accepted)
-        }
-      );
+      this.listenForMoves.unsubscribe();
+    }
+  }
+
+  private stopListeningForRequests()
+  {
+    if (this.listenForRequests)
+    {
+      this.listenForRequests.unsubscribe();
+    }
+  }
+
+  public requestGame(againstComputer: boolean, color ?: PieceColor, opponentPlayerId ?: string): Subject<GameRequest>
+  {
+    if (againstComputer)
+    {
+      this.challengeAComputer();
     }
     else
     {
-      console.debug(`Game Request Accepted: ${gameRequest.challengerPlayerId} vs ${gameRequest.opponentPlayerId}`);
-      this.challengeAccepted$.next(gameRequest);
-      this.startListeningForMoves();
+      this.challengeAPlayer();
     }
+    return this.gameStarted$;
   }
 
-  private startListeningForMoves()
-  {
-
-  }
-
-  public challenge(color: PieceColor, opponentPlayerId ?: string): Subject<GameRequest>
+  private challengeAComputer(color ?: PieceColor)
   {
     const challengeRequest = <GameRequest>
     {
       challengerPlayerId: this.playerId,
       challengerPlaysAs: color,
-      opponentPlayerId: opponentPlayerId ? opponentPlayerId : this.playerId,
+      opponentPlayerId: "COMPUTER",
       clockInSeconds: 3000,
       incrementInSeconds: 0,
       accepted: false
     }
-
-    console.debug("Sending challenge...", challengeRequest);
-
     this.submitGameRequest(challengeRequest);
+  }
 
-    return this.challengeAccepted$;
+  private challengeAPlayer(opponentId ?: string, color ?: PieceColor)
+  {
+    this.waitingForAnOpponent = opponentId == null;
+    const challengeRequest = <GameRequest>
+    {
+      challengerPlayerId: this.playerId,
+      challengerPlaysAs: color,
+      opponentPlayerId: opponentId,
+      clockInSeconds: 3000,
+      incrementInSeconds: 0,
+      accepted: false
+    }
+    this.submitGameRequest(challengeRequest);
   }
 
   private submitGameRequest(gameRequest: GameRequest)
@@ -125,4 +218,31 @@ export class GameService
     );
   }
 
+  public getPlayerId(): string
+  {
+    return this.playerId;
+  }
+
+
+  public makeMove(gameId: string, from: SAN, to: SAN, promotion ?: Piece)
+  {
+    const move = <MoveRequest>
+    {
+      gameId: gameId,
+      playerId: this.playerId,
+      from: from.parsed(),
+      to: to.parsed(),
+      promotionChoice: promotion ?
+        promotion.getColor().toString().toUpperCase() + "_" +
+        promotion.getType().toString().toUpperCase()
+        : null
+    }
+
+    this.rxStompService.publish(
+      {
+        destination: '/app/game/move',
+        body: JSON.stringify(move)
+      }
+    );
+  }
 }

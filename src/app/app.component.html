@@ -4,7 +4,6 @@
 
     <div class="mat-form-field-wrapper game-start">
       <mat-form-field appearance="fill" style="max-width: 7.5rem">
-        <mat-label>Start With...</mat-label>
         <mat-select [(value)]="this.gameStartOption">
           <mat-option
             *ngFor="let option of this.gameStartOptions"
@@ -19,18 +18,18 @@
     <!-- New Game Option -->
     <div
       class="board-options-group d-flex flex-row flex-grow-1"
-      *ngIf="this.newGameOptionSelected()"
+      *ngIf="this.playOptionSelected()"
     >
       <div class="board-option">
         <mat-radio-group class="board-option">
           <mat-radio-button
             value="White"
-            [checked]="this.playerIsWhite"
+            [checked]="this.engine.playerIsWhite"
             (change)="this.changePlayerColor()"
             >White</mat-radio-button
           >
           <mat-radio-button
-            [checked]="!this.playerIsWhite"
+            [checked]="!this.engine.playerIsWhite"
             value="Black"
             class="ml-3"
             (change)="this.changePlayerColor()"
@@ -70,7 +69,7 @@
     <!-- PGN Game Option -->
     <div
       class="board-options-group d-flex flex-row flex-grow-1 h-100"
-      *ngIf="this.pgnGameOptionSelected()"
+      *ngIf="this.studyOptionSelected()"
     >
       <div class="board-option mat-form-field-wrapper flex-grow-1">
         <form class="flex-grow-1 d-flex flex-row h-100">
@@ -109,7 +108,7 @@
         id="movesContainer"
         class="rounded align-self-center d-flex flex-row pl-3 pr-3 pb-0"
         [style.width]="this.chessBoardLengthPx()"
-        *ngIf="this.currentGame"
+        *ngIf="this.engine.currentGame"
       >
         <div class="rounded move-history-container">
           <div
@@ -124,7 +123,7 @@
           >
             <span
               class="ml-1 mr-1"
-              *ngFor="let move of this.currentGame.pastMoves"
+              *ngFor="let move of this.engine.currentGame.pastMoves"
             >
               {{ move.pgn }}
             </span>
@@ -136,11 +135,11 @@
         id="gameBoard"
         cdkDropListGroup
         class="ml-auto mr-auto mb-1 p-1 rounded d-flex flex-column no-select"
-        *ngIf="this.currentGame && this.currentGame.isReady()"
+        *ngIf="this.engine.currentGame && this.engine.currentGame.isReady()"
       >
         <div
           class="rank d-flex flex-row"
-          *ngFor="let rank of this.currentGame.board.ranks; let index = index"
+          *ngFor="let rank of this.engine.currentGame.board.ranks; let index = index"
         >
           <div
             [id]="tile.getPosition().x + '-' + tile.getPosition().y"

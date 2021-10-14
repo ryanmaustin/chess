@@ -17,9 +17,16 @@ export enum PieceColor
   BLACK = 'BLACK'
 }
 
-export interface Direction {
+export interface Direction
+{
    x: 1 | -1 | 0,
    y: 1 | -1 | 0
+}
+
+export interface Promotion
+{
+  type: PieceType,
+  color: PieceColor
 }
 
 export const N = <Direction> { x: 0, y: 1 };

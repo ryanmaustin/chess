@@ -25,6 +25,7 @@ import { GameService } from './lib/services/game.service';
 import { GamePromptService } from './lib/services/game-prompts.service';
 
 import { GamePromptComponent } from './lib/services/game-prompt.component';
+import { ClientGameEngine } from './lib/services/client-game-engine.service';
 
 @NgModule({
   declarations: [
@@ -63,6 +64,7 @@ import { GamePromptComponent } from './lib/services/game-prompt.component';
     },
     GameService,
     GamePromptService,
+    ClientGameEngine
   ],
   bootstrap: [
     AppComponent

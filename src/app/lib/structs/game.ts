@@ -5,28 +5,28 @@ import { Piece, PieceColor, PieceType, PositionUtil, Tile } from "./chess";
 import { PGN, PGNPieceMap, PGNUtil } from "../util/pgn-util";
 import { Position } from "./position";
 import { Pawn } from "./pieces/pawn";
+import { Queen } from "./pieces/queen";
 
 export class Game
 {
-
   public board: Board;
 
   public selected: Piece;
   public pastMoves: Array<Move>;
   public availableMoves: Array<Position>;
   public computerOn: Boolean = false;
-  public promotionChoiceNeeded$: Subject<Function>;
+  public gameId: string;
 
   private mate$: BehaviorSubject<Mate>;
   private playerColor: PieceColor = PieceColor.WHITE;
   private opponentColor: PieceColor = PieceColor.BLACK;
   private ready: boolean = false;
   private finished: boolean = false;
+  private promotionPiece: Piece;
 
   constructor()
   {
     this.mate$ = new BehaviorSubject<Mate>(null);
-    this.promotionChoiceNeeded$ = new Subject<Function>();
     this.pastMoves = new Array<Move>();
     this.board = new Board(this.mate$);
     this.availableMoves = [];
@@ -35,6 +35,12 @@ export class Game
       (mate) => { if(mate != null) this.finished = true; }
     );
 
+  }
+
+  public setPlayerColor(color: PieceColor)
+  {
+    this.playerColor = color;
+    this.opponentColor = this.playerColor == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
   }
 
   public getPlayerColor(): PieceColor
@@ -124,15 +130,11 @@ export class Game
     const move = this.getRandomComputerMove(this.opponentColor);
     const pieceToMove = move.movingPiece;
 
-    let movePiece = (promotionChoice) =>
-    {
-      move.promotionPiece = promotionChoice;
-      this.board.movePiece(move);
-      move.checkmate = this.board.isMate(false)
-      this.logAndSave(move, true);
-    }
+    move.promotionPiece = PieceType.QUEEN;
+    this.board.movePiece(move);
+    move.checkmate = this.board.isMate(false)
+    this.logAndSave(move, true);
 
-    this.handlePromotionBeforeMove(pieceToMove.getType(), move.destinationTile, movePiece, this.opponentColor);
     console.log(`Computer moved ${pieceToMove.getType()} to [${move.destinationTile.getPosition().x},${move.destinationTile.getPosition().y}]`);
   }
 
@@ -186,29 +188,24 @@ export class Game
   /**
    * Initiated by Player
    */
-  public moveSelectedPiece(pos: Position)
+  public moveSelectedPiece(pos: Position, promotionChoice ?: PieceType)
   {
     this.finished = false; // in case game starts up again
     const tile = PositionUtil.getTileAt(this.board.getTiles(), pos);
     const piece = this.selected;
     const color = this.selected.getColor();
 
-    let movePiece = (promotionChoice) =>
-    {
-      const move = this.createMove(this.selected, tile, promotionChoice);
-      this.board.movePiece(move);
+    const move = this.createMove(this.selected, tile, promotionChoice);
+    this.board.movePiece(move);
 
-      this.availableMoves = new Array<Position>();
-      this.selected = null;
+    this.availableMoves = new Array<Position>();
+    this.selected = null;
 
-      move.checkmate = this.board.isMate(false)
-      if (move.checkmate != null) this.board.switchTurn(color); // Switch board back since there are no more turns
-      this.logAndSave(move, true);
+    move.checkmate = this.board.isMate(false)
+    if (move.checkmate != null) this.board.switchTurn(color); // Switch board back since there are no more turns
+    this.logAndSave(move, true);
 
-      if (this.computerOn && this.isComputerTurn() && move.checkmate == null) this.makeComputerMove();
-    }
-
-    this.handlePromotionBeforeMove(piece.getType(), tile, movePiece, color);
+    if (this.computerOn && this.isComputerTurn() && move.checkmate == null) this.makeComputerMove();
   }
 
   private createMove(pieceToMove: Piece, destinationTile: Tile, promotionPiece: PieceType): Move
@@ -243,27 +240,6 @@ export class Game
     return null;
   }
 
-  private handlePromotionBeforeMove(pieceType: PieceType, tile: Tile, movePiece: Function, currentTurn: PieceColor)
-  {
-    // Determine if a promotion choice is needed
-    if (pieceType == PieceType.PAWN && (tile.getPosition().y == 8 || tile.getPosition().y == 1))
-    {
-      if (this.computerOn && currentTurn == this.opponentColor)
-      {
-        movePiece(PieceType.QUEEN);
-      }
-      else
-      {
-        this.promotionChoiceNeeded$.next(movePiece);
-      }
-      return;
-    }
-    else
-    {
-      movePiece(null); // Move piece without promotion choice since it's not needed
-    }
-  }
-
   private isComputerTurn(): boolean
   {
     return this.board.getTurn() == this.opponentColor;
@@ -277,5 +253,10 @@ export class Game
   public isFinished(): boolean
   {
     return this.finished;
+  }
+
+  public getPromotionPiece()
+  {
+    return this.promotionPiece;
   }
 }

@@ -1,4 +1,6 @@
+import { PGNMoveMap } from "../util/pgn-util";
 import { PieceColor } from "./chess";
+import { Position } from "./position";
 
 export interface GameRequest
 {
@@ -7,7 +9,8 @@ export interface GameRequest
   opponentPlayerId: string,
   clockInSeconds: number,
   incrementInSeconds: number,
-  accepted: boolean
+  accepted: boolean,
+  gameId ?: string
 }
 
 export interface MoveRequest
@@ -17,4 +20,18 @@ export interface MoveRequest
   from: string,
   to: string,
   promotionChoice: string
+}
+
+export class SAN
+{
+
+  constructor(private position: Position)
+  {
+  }
+
+
+  public parsed(): string
+  {
+    return PGNMoveMap.get(this.position);
+  }
 }

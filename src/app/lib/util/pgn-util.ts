@@ -18,7 +18,7 @@ import { Position } from "../structs/position";
    *
    */
 
-const ChessNotationMap =
+export const ChessNotationMap =
 {
   a: 1,
   b: 2,
@@ -42,7 +42,6 @@ export class PGNUtil
   {
     let pgn = PGNMapper.get(
       move.movingPiece.getType(),
-      move.movingPiece.getColor(),
       move.currentTile.getPosition(),
       move.destinationTile.getPosition(),
       move.capturedPiece != null
@@ -113,7 +112,7 @@ export class PGNUtil
 
     let pieceDesignator = PGNPieceMap.get(move.movingPiece.getType());
     let capturing = move.capturedPiece != null ? 'x' : '';
-    let target = PGNMoveMap.get(move.destinationTile.getPosition(), move.movingPiece.getColor());
+    let target = PGNMoveMap.get(move.destinationTile.getPosition());
 
     return pieceDesignator + distinguisher + capturing + target;
   }
@@ -122,7 +121,7 @@ export class PGNUtil
   {
     let distinguisher =  this.distinquishByFile(piece, otherPieces, originPosition);
     if (!distinguisher) distinguisher = this.distinquishByRank(piece, otherPieces, originPosition);
-    if (!distinguisher) distinguisher = PGNMoveMap.get(piece.getPosition(), piece.getColor());
+    if (!distinguisher) distinguisher = PGNMoveMap.get(piece.getPosition());
     return distinguisher;
   }
 
@@ -139,7 +138,7 @@ export class PGNUtil
     }
     if (noneOnSameFile)
     {
-      return PGNMoveMap.get(originPosition, piece.getColor()).substr(0, 1);
+      return PGNMoveMap.get(originPosition).substr(0, 1);
     }
     return null;
   }
@@ -157,7 +156,7 @@ export class PGNUtil
     }
     if (noneOnSameRank)
     {
-      return PGNMoveMap.get(originPosition, piece.getColor()).substr(1, 1);
+      return PGNMoveMap.get(originPosition).substr(1, 1);
     }
     return null;
   }
@@ -272,12 +271,16 @@ export class PGNPieceMap
  */
 export class PGNMoveMap
 {
-
   static xMap = [ '', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
-  public static get(position: Position, color: PieceColor): string
+  public static get(position: Position): string
   {
     return String(this.xMap[position.x]) + String(position.y.toFixed(0));
+  }
+
+  public static map(square: string): Position
+  {
+    return { x: this.xMap.indexOf(square.charAt(0).toLowerCase()), y: Number(square.charAt(1)) }
   }
 }
 
@@ -290,12 +293,12 @@ export class PGNMoveMap
 export class PGNMapper
 {
 
-  public static get(type: PieceType, color: PieceColor, current: Position, target: Position, capture: boolean): string {
+  public static get(type: PieceType, current: Position, target: Position, capture: boolean): string {
     let pgn =
-      (capture && type ==  PieceType.PAWN ? PGNMoveMap.get(current, color)[0] : '') +
+      (capture && type ==  PieceType.PAWN ? PGNMoveMap.get(current)[0] : '') +
       PGNPieceMap.get(type) +
       (capture ? 'x' : '') +
-      PGNMoveMap.get(target, color);
+      PGNMoveMap.get(target);
     return pgn;
   }
 

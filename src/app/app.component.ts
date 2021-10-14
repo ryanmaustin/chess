@@ -1,16 +1,12 @@
-import { ChangeDetectorRef, Component, Inject, OnInit } from '@angular/core';
-import { Mate, Move } from './lib/structs/board';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Position } from './lib/structs/position';
-import { Piece, PieceColor, PieceType, PositionUtil, Tile } from './lib/structs/chess';
-import { Subject, Subscription } from 'rxjs';
-import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { Piece, PieceColor, Tile } from './lib/structs/chess';
+import { MatDialog } from '@angular/material/dialog';
 import { CdkDragEnd, CdkDragMove, CdkDragStart } from '@angular/cdk/drag-drop';
-import { startCase } from 'lodash';
-import { Game } from './lib/structs/game';
-import { GameService } from './lib/services/game.service';
+import { ClientGameEngine } from './lib/services/client-game-engine.service';
 
-const GameOption_PGN = "PGN";
-const GameOption_New_Game = "New Game"
+const GameOption_Study = "Study";
+const GameOption_Play = "Play Game"
 
 @Component({
   selector: 'app-root',
@@ -19,80 +15,21 @@ const GameOption_New_Game = "New Game"
 })
 export class AppComponent implements OnInit
 {
-  title = 'Chess';
+  public title = 'EveryMove';
 
-  public gameOn: boolean = false;
   public pgn: string = '';
-  public games = new Array<Game>();
-  public currentGame: Game;
-  public playerIsWhite: boolean = true;
-  public computerOn: boolean = true;
-  public gameStartOption: string = GameOption_New_Game;
-  public gameStartOptions = [ GameOption_PGN, GameOption_New_Game ];
+
+  public gameStartOption: string = GameOption_Play;
+  public gameStartOptions = [ GameOption_Play, GameOption_Study ];
 
   private lastHoveredTile: Position;
-  private mateSubscription$: Subscription;
-  private promotionSubscription: Subscription;
 
   constructor(
     public dialog: MatDialog,
     private cd: ChangeDetectorRef,
-    private gameService: GameService,
+    public engine: ClientGameEngine
   )
   {
-    this.games = new Array<Game>();
-  }
-
-  public changeGame(index: number)
-  {
-    this.currentGame = this.games[index];
-
-    if (this.mateSubscription$)
-    {
-      this.mateSubscription$.unsubscribe();
-    }
-    this.mateSubscription$ = this.subscribeToCurrentGameMated();
-
-    if (this.promotionSubscription)
-    {
-      this.promotionSubscription.unsubscribe();
-    }
-    this.promotionSubscription = this.subscribeToPromotionChoiceNeeded();
-
-    this.playerIsWhite = this.currentGame.getPlayerColor() == PieceColor.WHITE;
-  }
-
-  private subscribeToCurrentGameMated(): Subscription
-  {
-    return this.currentGame.mated().subscribe(
-      (mate) => {
-        if (mate) {
-          this.gameOn = false;
-          this.dialog.open(CheckmateDialog, { width: '250px', data: mate });
-        }
-      }
-    );
-  }
-
-  private subscribeToPromotionChoiceNeeded(): Subscription
-  {
-    return this.currentGame.promotionChoiceNeeded$.subscribe(
-      (makeMove) =>
-      {
-        let choice$ = new Subject<PieceType>();
-        choice$.subscribe(
-          (promotionPiece) =>
-          {
-            makeMove(promotionPiece);
-          }
-        );
-
-        this.dialog.open(
-          PromotionChoicePrompt,
-          { width: '250px', data: { color: this.currentGame.getPlayerColor(), promotionChoice$: choice$ } }
-        );
-      }
-    );
   }
 
   public ngOnInit()
@@ -101,17 +38,14 @@ export class AppComponent implements OnInit
 
   public selectPiece(piece: Piece)
   {
-    if (!this.currentGame || this.currentGame.isFinished()) return;
-    if (piece.getColor() != this.currentGame.board.getTurn()) return;
-
-    this.currentGame.selectPiece(piece);
+    this.engine.selectPiece(piece);
     this.cd.detectChanges();
     this.cd.markForCheck();
   }
 
   public isAvailableMove(tile: Tile): boolean
   {
-    for (const availableMove of this.currentGame.availableMoves)
+    for (const availableMove of this.engine.currentGame.availableMoves)
     {
       if (availableMove.x == tile.getPosition().x && availableMove.y == tile.getPosition().y) return true;
     }
@@ -120,33 +54,19 @@ export class AppComponent implements OnInit
 
   public moveSelectedPiece(pos: Position)
   {
-    this.currentGame.moveSelectedPiece(pos);
+    this.engine.moveSelectedPiece(pos);
   }
 
   public changePlayerColor()
   {
-    this.playerIsWhite = !this.playerIsWhite;
+    this.engine.playerIsWhite = !this.engine.playerIsWhite;
   }
 
   public startNewGame()
   {
-    const playerColor = this.playerIsWhite ? PieceColor.WHITE : PieceColor.BLACK;
-    this.gameService.challenge(playerColor).subscribe(
-      (challenge) =>
-      {
-        this.currentGame = new Game();
-        if (challenge.challengerPlaysAs == PieceColor.WHITE) { this.currentGame.asWhite(); }
-        else { this.currentGame.asBlack(); }
-
-        this.currentGame.computerOn = this.computerOn;
-        this.games.push(this.currentGame);
-        this.currentGame.startGame();
-        this.changeGame(this.games.length - 1);
-        console.warn("Game Started", this.currentGame, this.playerIsWhite);
-        this.cd.detectChanges();
-        this.cd.markForCheck();
-      }
-    );
+    this.engine.requestNewGame();
+    this.cd.detectChanges();
+    this.cd.markForCheck();
   }
 
   public dragStart(event: CdkDragStart, piece: Piece)
@@ -160,7 +80,7 @@ export class AppComponent implements OnInit
     event.source.element.nativeElement.style.zIndex = '10000';
 
     const tile = this.calculateTile(piece, event.distance);
-    for (const availableMove of this.currentGame.availableMoves)
+    for (const availableMove of this.engine.currentGame.availableMoves)
     {
       if (availableMove.x == tile.x && availableMove.y == tile.y)
       {
@@ -174,11 +94,11 @@ export class AppComponent implements OnInit
   {
     const deltaX = Math.round(Math.abs(distance.x / this.getTileWidth()));
     let signX = distance.x > 0 ? 1 : distance.x == 0 ? 0 : -1;
-    signX = this.currentGame.board.isFlipped() ? -1 * signX : signX;
+    signX = this.engine.currentGame.board.isFlipped() ? -1 * signX : signX;
 
     const deltaY = Math.round(Math.abs(distance.y / this.getTileHeight()));
     let signY = distance.y > 0 ? -1 : distance.y == 0 ? 0 : 1;
-    signY = this.currentGame.board.isFlipped() ? -1 * signY : signY;
+    signY = this.engine.currentGame.board.isFlipped() ? -1 * signY : signY;
 
     return <Position> { x: piece.getPosition().x + (signX * deltaX), y: piece.getPosition().y + (signY * deltaY) };
   }
@@ -210,12 +130,12 @@ export class AppComponent implements OnInit
 
   public getBlackPieces(): Array<Piece>
   {
-    return this.currentGame.board.getPieces(PieceColor.BLACK);
+    return this.engine.currentGame.board.getPieces(PieceColor.BLACK);
   }
 
   public getWhitePieces(): Array<Piece>
   {
-    return this.currentGame.board.getPieces(PieceColor.WHITE);
+    return this.engine.currentGame.board.getPieces(PieceColor.WHITE);
   }
 
   public getPosX(position: Position): number
@@ -234,96 +154,21 @@ export class AppComponent implements OnInit
 
   public setBoardFromPgn()
   {
-    this.computerOn = false;
-    this.startNewGame();
-    this.currentGame.setBoard(this.pgn);
+    this.engine.setBoard(this.pgn);
   }
 
-  public pgnGameOptionSelected(): boolean
+  public studyOptionSelected(): boolean
   {
-    return this.gameStartOption == GameOption_PGN;
+    return this.gameStartOption == GameOption_Study;
   }
 
-  public newGameOptionSelected(): boolean
+  public playOptionSelected(): boolean
   {
-    return this.gameStartOption == GameOption_New_Game;
+    return this.gameStartOption == GameOption_Play;
   }
 
   public chessBoardLengthPx()
   {
     return document.getElementById('chessBoard').clientWidth + 'px';
-  }
-
-}
-
-@Component({
-  selector: 'mate-dialog',
-  template: `
-
-    <div >{{ this.data.checkmate ? "Checkmate! " + this.format(this.data.winner) + " Wins!" : "Stalemate!" }} </div>
-
-  `,
-})
-export class CheckmateDialog {
-
-  constructor(
-    public dialogRef: MatDialogRef<CheckmateDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: Mate) {}
-
-  onNoClick(): void {
-    this.dialogRef.close();
-  }
-
-  public format(str: string): string {
-    return startCase(str.toLowerCase());
-  }
-
-}
-
-@Component({
-  selector: 'mate-dialog',
-  template: `
-
-    <div class="d-flex flex-row justify-content">
-      <div (click)="this.choosePromotionPiece('QUEEN')"><img class="promotion-choice flex-grow-1" [src]="'assets/' + this.colorSymbol() + '-q.png'"></div>
-      <div (click)="this.choosePromotionPiece('KNIGHT')"><img class="promotion-choice flex-grow-1" [src]="'assets/' + this.colorSymbol() + '-n.png'"></div>
-      <div (click)="this.choosePromotionPiece('ROOK')"><img class="promotion-choice flex-grow-1" [src]="'assets/' + this.colorSymbol() + '-r.png'"></div>
-      <div (click)="this.choosePromotionPiece('BISHOP')"><img class="promotion-choice flex-grow-1" [src]="'assets/' + this.colorSymbol() + '-b.png'"></div>
-    </div>
-
-  `,
-  styles: [`
-
-    .promotion-choice {
-      max-height: 3rem;
-      cursor: pointer;
-    }
-
-    .promotion-choice:hover {
-      filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.8));
-    }
-
-  `]
-})
-export class PromotionChoicePrompt {
-
-  public color: PieceColor;
-  public promotionChoice$: Subject<PieceType>;
-
-  constructor(
-    public dialogRef: MatDialogRef<PromotionChoicePrompt>,
-    @Inject(MAT_DIALOG_DATA) public data: { color: PieceColor, promotionChoice$: Subject<PieceType> }
-  ) {
-    this.color = data.color;
-    this.promotionChoice$ = data.promotionChoice$;
-  }
-
-  public choosePromotionPiece(type: string | PieceType) {
-    this.promotionChoice$.next(<PieceType>type);
-    this.dialogRef.close();
-  }
-
-  public colorSymbol(): string {
-    return this.color.toLowerCase().charAt(0);
   }
 }
