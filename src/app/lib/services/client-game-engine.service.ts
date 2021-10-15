@@ -16,7 +16,7 @@ export class ClientGameEngine
   public games = new Array<Game>();
   public gameOn: boolean = false;
   public currentGame: Game;
-  public computerOn: boolean = false;
+  public computerOn: boolean = true;
   public playerIsWhite: boolean = true;
 
   private mateSubscription$: Subscription;

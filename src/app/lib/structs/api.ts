@@ -10,7 +10,8 @@ export interface GameRequest
   clockInSeconds: number,
   incrementInSeconds: number,
   accepted: boolean,
-  gameId ?: string
+  gameId ?: string,
+  rating ?: number
 }
 
 export interface MoveRequest

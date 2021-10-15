@@ -156,6 +156,7 @@ export class GameService
 
   public requestGame(againstComputer: boolean, color ?: PieceColor, opponentPlayerId ?: string): Subject<GameRequest>
   {
+    console.warn("Against computer?", againstComputer);
     if (againstComputer)
     {
       this.challengeAComputer();
@@ -169,6 +170,7 @@ export class GameService
 
   private challengeAComputer(color ?: PieceColor)
   {
+    console.warn("Computer Challenge Requested");
     const challengeRequest = <GameRequest>
     {
       challengerPlayerId: this.playerId,
