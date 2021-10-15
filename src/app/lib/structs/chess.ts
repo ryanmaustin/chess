@@ -226,7 +226,7 @@ export abstract class Piece
 
   public isAttackedByPawn(direction: Direction, pawnPosition: Position): boolean
   {
-    if (direction.x == 0) return false; // pawn can't attack vertically
+    if (direction.x == 0 || direction.y == 0) return false; // pawn can't attack vertically or horizontally
     // Invert so we can view from pawn's perspective and see if the inverted
     // direction takes us to this's position
     const inverted = { x: direction.x * -1, y: direction.y * -1 };

@@ -30,6 +30,9 @@ export const ChessNotationMap =
   h: 8
 }
 
+/**
+ * Converts a Move into its PGN equivalent
+ */
 export class PGNUtil
 {
 

@@ -89,6 +89,7 @@ export class Pawn extends Piece
     if (tile == null) return false;
     return tile.getPiece() != null &&
       tile.getPiece().getType() == PieceType.PAWN &&
+      tile.getPiece().getColor() != this.color &&
       (<Pawn>(tile.getPiece())).enPassantAllowed();
   }
 

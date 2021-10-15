@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { Subject, Subscription } from "rxjs";
 import { GameRequest, SAN } from "../structs/api";
+import { Board } from "../structs/board";
 import { PieceColor, PieceType, Piece, PositionUtil } from "../structs/chess";
 import { Game } from "../structs/game";
 import { Position } from "../structs/position";
@@ -96,7 +97,7 @@ export class ClientGameEngine
         choice$.subscribe(
           (promotionPiece) =>
           {
-            makeMove(promotionPiece);
+            makeMove(Board.create(promotionPiece, this.currentGame.selected.getColor()));
           }
         );
 
@@ -168,12 +169,12 @@ export class ClientGameEngine
 
   public moveSelectedPiece(pos: Position)
   {
-    const movePiece = (promotionChoice) =>
+    const movePiece = (promotionChoice: Piece) =>
     {
       const from = this.currentGame.selected.getPosition();
       const to = pos;
-      this.currentGame.moveSelectedPiece(pos, promotionChoice);
-      this.gameService.makeMove(this.currentGame.gameId, new SAN(from), new SAN(to));
+      this.currentGame.moveSelectedPiece(pos, promotionChoice ? promotionChoice.getType() : null);
+      this.gameService.makeMove(this.currentGame.gameId, new SAN(from), new SAN(to), promotionChoice);
     }
 
     // first, determine if a promotion choice is needed

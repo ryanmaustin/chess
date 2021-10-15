@@ -17,6 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
+import { DropdownModule } from 'primeng/dropdown';
 
 import { InjectableRxStompConfig, RxStompService, rxStompServiceFactory } from '@stomp/ng2-stompjs';
 import { myRxStompConfig } from './lib/config/rx-stomp-config';
@@ -26,6 +27,7 @@ import { GamePromptService } from './lib/services/game-prompts.service';
 
 import { GamePromptComponent } from './lib/services/game-prompt.component';
 import { ClientGameEngine } from './lib/services/client-game-engine.service';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 
 @NgModule({
   declarations: [
@@ -48,9 +50,11 @@ import { ClientGameEngine } from './lib/services/client-game-engine.service';
     DndModule,
     ReactiveFormsModule,
     MatInputModule,
+    ScrollingModule,
     MatButtonModule,
     MatSelectModule,
-    HttpClientModule
+    HttpClientModule,
+    DropdownModule
   ],
   providers: [
     {
