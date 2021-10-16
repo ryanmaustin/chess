@@ -169,7 +169,6 @@ export class GameService
 
   private challengeAComputer(color: PieceColor, rating: number)
   {
-    console.warn("Computer Challenge Requested");
     const challengeRequest = <GameRequest>
     {
       challengerPlayerId: this.playerId,
@@ -180,6 +179,7 @@ export class GameService
       accepted: false,
       rating: rating
     }
+    console.warn("Computer Challenge Requested", challengeRequest);
     this.submitGameRequest(challengeRequest);
   }
 

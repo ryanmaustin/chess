@@ -6,6 +6,7 @@ import { CdkDragEnd, CdkDragMove, CdkDragStart } from '@angular/cdk/drag-drop';
 import { ClientGameEngine } from './lib/services/client-game-engine.service';
 import { GameOptionsService, Mode } from './lib/services/game-options.service';
 import { $ } from 'protractor';
+import { Move } from './lib/structs/board';
 
 @Component({
   selector: 'app-root',
@@ -132,6 +133,7 @@ export class AppComponent implements OnInit
 
   public getPosX(position: Position): number
   {
+    this.engine.currentGame.scrollHistoryAllTheWayToTheRight();
     const tile = document.getElementById(position.x + '-' + position.y);
     const x = tile.offsetLeft;
     return x;
@@ -173,5 +175,15 @@ export class AppComponent implements OnInit
   {
     this.cd.markForCheck();
     this.cd.detectChanges();
+  }
+
+  public isCurrentMove(move: Move): boolean
+  {
+    return this.engine.currentGame.currentMove == this.engine.currentGame.pastMoves.indexOf(move);
+  }
+
+  public goToMove(move: Move)
+  {
+    this.engine.currentGame.goToMove(move);
   }
 }

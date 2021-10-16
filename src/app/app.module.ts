@@ -24,6 +24,7 @@ import { RadioButtonModule } from 'primeng/radiobutton';
 import { ButtonModule } from 'primeng/button';
 import { SliderModule } from 'primeng/slider';
 import { InputTextareaModule } from 'primeng/inputtextarea';
+import { FaIconLibrary, FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { InputTextModule } from 'primeng/inputtext';
 
 import { InjectableRxStompConfig, RxStompService, rxStompServiceFactory } from '@stomp/ng2-stompjs';
@@ -35,7 +36,9 @@ import { ClientGameEngine } from './lib/services/client-game-engine.service';
 import { GamePromptService } from './lib/services/game-prompts.service';
 
 import { GamePromptComponent } from './lib/services/game-prompt.component';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+
+import { fas } from '@fortawesome/free-solid-svg-icons';
+import { far } from '@fortawesome/free-regular-svg-icons';
 
 @NgModule({
   declarations: [
@@ -92,4 +95,8 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 })
 export class AppModule {
 
+  constructor(library: FaIconLibrary)
+  {
+    library.addIconPacks(fas, far);
+  }
 }

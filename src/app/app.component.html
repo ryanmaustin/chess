@@ -85,7 +85,7 @@
           type="button"
           class="p-button-raised p-button-help p-button-rounded ml-auto mr-auto"
           [style]="{ 'text-align': 'center' }"
-          *ngIf="!this.engine.currentGame"
+          *ngIf="this.engine.games.length == 0"
         >
           Start Game
         </button>
@@ -100,7 +100,7 @@
             mr-auto
           "
           [style]="{ 'text-align': 'center' }"
-          *ngIf="this.engine.currentGame"
+          *ngIf="this.engine.games.length"
         >
           Reset
         </div>
@@ -157,8 +157,10 @@
             class="d-flex flex-row flex-no-wrap flex-grow-1 pr-2 pl-2 h-100"
           >
             <span
-              class="ml-1 mr-1"
+              class="clickable move ml-1 mr-1"
               *ngFor="let move of this.engine.currentGame.pastMoves"
+              [class.current-move]="this.isCurrentMove(move)"
+              (click)="this.goToMove(move)"
             >
               {{ move.pgn }}
             </span>
@@ -170,7 +172,6 @@
         id="gameBoard"
         cdkDropListGroup
         class="ml-auto mr-auto mb-1 p-1 rounded d-flex flex-column no-select"
-        *ngIf="this.engine.currentGame && this.engine.currentGame.isReady()"
       >
         <div
           class="rank d-flex flex-row"

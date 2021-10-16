@@ -13,6 +13,7 @@ export class Game
 
   public selected: Piece;
   public pastMoves: Array<Move>;
+  public currentMove: number = 0;
   public availableMoves: Array<Position>;
   public computerOn: Boolean = false;
   public gameId: string;
@@ -34,7 +35,6 @@ export class Game
     this.mate$.subscribe(
       (mate) => { if(mate != null) this.finished = true; }
     );
-
   }
 
   public setPlayerColor(color: PieceColor)
@@ -100,6 +100,7 @@ export class Game
         const boardMove = this.createMove(pieceToMove, destinationTile, promotion);
         this.board.movePiece(boardMove);
         boardMove.checkmate = this.board.isMate(false);
+        this.board.goToMove(boardMove);
 
         this.logAndSave(boardMove, false);
       }
@@ -172,7 +173,6 @@ export class Game
   {
     this.finished = false; // in case game starts up again
     const tile = PositionUtil.getTileAt(this.board.getTiles(), pos);
-    const piece = this.selected;
     const color = this.selected.getColor();
 
     const move = this.createMove(this.selected, tile, promotionChoice);
@@ -206,7 +206,20 @@ export class Game
     if (enPassantCapture) move.capturedPiece = enPassantCapture;
 
     move.pgn = PGNUtil.toPGN(move, this.board.getTiles());
+    this.updateHistory(move);
+  }
+
+  private updateHistory(move: Move)
+  {
     this.pastMoves.push(move);
+    this.currentMove = this.pastMoves.length - 1;
+    // this.scrollHistoryAllTheWayToTheRight();
+  }
+
+  public scrollHistoryAllTheWayToTheRight()
+  {
+    const moveHistory = document.getElementById('moveHistory');
+    moveHistory.scrollLeft += 100000;
   }
 
   private getEnPassantCapture(movingPiece: Piece, destinationTile: Tile)
@@ -216,11 +229,6 @@ export class Game
       return this.board.handleEnPassant(<Pawn>movingPiece, destinationTile);
     }
     return null;
-  }
-
-  private isComputerTurn(): boolean
-  {
-    return this.board.getTurn() == this.opponentColor;
   }
 
   public isReady(): boolean
@@ -236,5 +244,11 @@ export class Game
   public getPromotionPiece()
   {
     return this.promotionPiece;
+  }
+
+  public goToMove(move: Move)
+  {
+    this.currentMove = this.pastMoves.indexOf(move);
+    this.board.goToMove(move);
   }
 }

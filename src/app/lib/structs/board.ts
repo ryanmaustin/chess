@@ -15,9 +15,19 @@ export interface Move
   capturedPiece: Piece,
   currentTile: Tile,
   destinationTile: Tile,
+  boardSnapshot: BoardSnapshot,
   promotionPiece ?: PieceType,
   pgn ?: string,
   checkmate ?: boolean
+}
+
+export interface BoardSnapshot
+{
+  tiles: Array<Tile>,
+  whitePieces: Array<Piece>,
+  blackPieces: Array<Piece>,
+  turn: PieceColor,
+  flipped: boolean
 }
 
 export interface EnPassant
@@ -168,6 +178,26 @@ export class Board {
     this.capturePiece(move);
     this.switchTurn(move.movingPiece.getColor());
     this.isMate(true);
+    move.boardSnapshot = this.takeBoardSnapshot();
+  }
+
+  public takeBoardSnapshot(): BoardSnapshot
+  {
+    const tiles = PositionUtil.cloneBoard(this.tiles);
+    const whitePieces = new Array<Piece>();
+    const blackPieces = new Array<Piece>();
+    for (const p of this.whitePieces) whitePieces.push(p.getClone());
+    for (const p of this.blackPieces) blackPieces.push(p.getClone());
+    const turn = <PieceColor>(this.turn.toString());
+
+    return <BoardSnapshot>
+    {
+      tiles: tiles,
+      whitePieces: whitePieces,
+      blackPieces: blackPieces,
+      turn: turn,
+      flipped: this.flipped
+    }
   }
 
   private movePieceToTile(move: Move)
@@ -443,6 +473,19 @@ export class Board {
       case PieceType.KNIGHT:
         return new Knight(color);
     }
+  }
+
+  public goToMove(move: Move)
+  {
+    this.tiles = move.boardSnapshot.tiles;
+    this.blackPieces = move.boardSnapshot.blackPieces;
+    this.whitePieces = move.boardSnapshot.whitePieces;
+    this.turn = move.boardSnapshot.turn;
+    if (this.flipped != move.boardSnapshot.flipped)
+    {
+      this.flip();
+    }
+    this.initRanks();
   }
 
 }

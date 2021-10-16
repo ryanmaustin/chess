@@ -268,6 +268,7 @@ export abstract class Piece
   {
     return this._captured;
   }
+
 }
 
 export const PieceImgMap = new Map<PieceType, string>([

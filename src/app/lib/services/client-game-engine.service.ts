@@ -31,7 +31,14 @@ export class ClientGameEngine
   {
     this.promotionChoiceNeeded$ = new Subject<Function>();
     this.games = new Array<Game>();
+    this.initBlankBoard();
     this.subscribeToGameServiceMoves();
+  }
+
+  private initBlankBoard()
+  {
+    this.currentGame = new Game();
+    this.currentGame.startGame();
   }
 
   public changeGame(index: number)
