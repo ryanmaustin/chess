@@ -26,6 +26,7 @@ import { SliderModule } from 'primeng/slider';
 import { InputTextareaModule } from 'primeng/inputtextarea';
 import { FaIconLibrary, FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 
 import { InjectableRxStompConfig, RxStompService, rxStompServiceFactory } from '@stomp/ng2-stompjs';
 import { myRxStompConfig } from './lib/config/rx-stomp-config';
@@ -39,11 +40,14 @@ import { GamePromptComponent } from './lib/services/game-prompt.component';
 
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { far } from '@fortawesome/free-regular-svg-icons';
+import { ChessBoardComponent } from './lib/sections/chess-board.component';
+import { ClipboardService } from './lib/services/clipboard.service';
 
 @NgModule({
   declarations: [
     AppComponent,
-    GamePromptComponent
+    GamePromptComponent,
+    ChessBoardComponent
   ],
   imports: [
     BrowserModule,
@@ -72,7 +76,8 @@ import { far } from '@fortawesome/free-regular-svg-icons';
     SliderModule,
     InputTextareaModule,
     InputTextModule,
-    FontAwesomeModule
+    FontAwesomeModule,
+    InputNumberModule
   ],
   providers: [
     {
@@ -87,7 +92,8 @@ import { far } from '@fortawesome/free-regular-svg-icons';
     GameService,
     GamePromptService,
     GameOptionsService,
-    ClientGameEngine
+    ClientGameEngine,
+    ClipboardService
   ],
   bootstrap: [
     AppComponent

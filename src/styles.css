@@ -29,3 +29,19 @@ html {
 .clickable {
   cursor: pointer;
 }
+
+.ng-fa-icon {
+  color: rgba(210, 210, 228, 0.815);
+  cursor: pointer;
+}
+
+.ng-fa-icon.icon:hover {
+  color: white !important;
+}
+
+.small-divider {
+  height: 1.5rem;
+  border-right: 2px solid rgba(171, 174, 181, 0.2);
+  margin-right: 0.5rem;
+  margin-left: 0.5rem;
+}

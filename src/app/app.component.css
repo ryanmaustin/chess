@@ -3,67 +3,17 @@
 }
 
 .chess-section {
+  padding-top: 15rem;
   display: flex;
   align-items: center;
-}
-
-#chessBoard {
-  margin-top:  auto;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: auto;
-  display: block;
-}
-
-#gameBoard {
-  background-color: #3b4557;
-
-  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
-
-  height: 100%;
-  width: 100%;
-
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
 }
 
 .pgn-input {
   width: 100%;
 }
 
-#movesContainer {
-  position: absolute;
-  margin-top: -50px;
-
-  display: flex;
-  height: 50px;
-  align-items: center;
-}
-
-.move-history-container {
-  height: 100%;
-  width: 100%;
-  background-color: #3b4557;
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-}
-
-#moveHistory {
-  height: 100%;
-  background-color: #3b4557;
-  color: white;
-  align-items: center;
-  overflow-x: auto;
-  text-align: left;
-
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
-
-  border-bottom-left-radius: 0 !important;
-  border-bottom-right-radius: 0 !important;
-}
-
 .board-options {
+  position: fixed;
   background-color: #3b4557;
   background-image: linear-gradient(315deg, #393f4a 0%, #3b4557 74%);
   height: 6rem;
@@ -75,6 +25,8 @@
 }
 
 .board-sub-options {
+  position: fixed;
+  top: 6rem;
   background-color: #3b4557;
   background-image: linear-gradient(315deg, #6f7a8f 0%, #687896 74%);
   width: 100%;
@@ -133,8 +85,10 @@
   font-weight: 300;
 }
 
-input {
+:host ::ng-deep .p-inputtext {
   background-color: rgba(0,0,0,0);
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
   border: none;
   color: white;
 }
@@ -146,91 +100,10 @@ input {
   margin-left: 2rem;
 }
 
-.rank {
-  display: flex;
-  align-items: center;
-
-  min-height: 12.5%;
-  min-width: 12.5%;
-}
-
-.tile {
-  /* display: block; */
-  height: 100%;
-  width: 100%;
-}
-
-.move-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-  z-index: 10001;
-}
-
-.available-move {
-  box-shadow: inset 0px 0px 2px 4px rgb(162, 159, 211);
-}
-
-.make-move {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  cursor: pointer;
-  font-size: 3.5rem;
-  color: rgba(106, 93, 118, 0.7);
-  padding-top: 0.15rem;
-  z-index: 10001;
-}
-
-.glow-purple {
-  color: white;
-  text-shadow:0px 0px 5px rgb(157, 63, 176), 0px 0px 5px rgb(167, 92, 196);
-}
-
 #playButton {
   display: flex;
   font-size: 10pt;
   align-items: center;
-}
-
-.piece {
-  position: absolute;
-  cursor: pointer;
-  z-index: 1000;
-}
-
-.piece-img {
-  z-index: 999;
-}
-
-.piece:hover {
-  filter: drop-shadow(1px 1px 1px rgb(53, 53, 53, 0.8));
-}
-
-
-.piece-dragging .piece-img {
-  max-height: 4rem;
-}
-
-.drag-pieces-container {
-  position: fixed;
-}
-
-.tile-drag-over {
-  filter: brightness(80%);
-}
-
-.black-tile {
-  background-color: #6a7486;
-}
-
-.white-tile {
-  background-color: white;
 }
 
 .spacer-bottom {
@@ -249,21 +122,7 @@ input {
   max-height: 80%;
 }
 
-.move {
-  padding-bottom: 0.25rem;
-}
-
-.current-move {
-  border-bottom: 2px solid rgb(159, 82, 134);
-  font-size: 12pt;
-  font-weight: 500;
-}
-
 @media only screen and (max-width: 750px) {
-
-  #chessBoard {
-    margin-bottom: 1rem;
-  }
 
   .spacer-bottom {
     margin-top: 6rem;

@@ -1,4 +1,4 @@
-import { Injectable } from "@angular/core";
+import { ChangeDetectorRef, Injectable } from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { Subject, Subscription } from "rxjs";
 import { GameRequest, SAN } from "../structs/api";
@@ -23,6 +23,8 @@ export class ClientGameEngine
   private promotionSubscription: Subscription;
   private promotionChoiceNeeded$: Subject<Function>;
 
+  private cd: ChangeDetectorRef;
+
   constructor(
     public dialog: MatDialog,
     private gameService: GameService,
@@ -39,6 +41,11 @@ export class ClientGameEngine
   {
     this.currentGame = new Game();
     this.currentGame.startGame();
+  }
+
+  public initChangeDetection(cd: ChangeDetectorRef)
+  {
+    this.cd = cd;
   }
 
   public changeGame(index: number)
@@ -138,6 +145,7 @@ export class ClientGameEngine
         }
 
         console.warn("Game Started", this.currentGame);
+        this.cd.detectChanges();
       }
     );
   }
@@ -160,7 +168,7 @@ export class ClientGameEngine
   public setBoard(pgn: string)
   {
     this.newGame(PieceColor.WHITE);
-    this.currentGame.setBoard(pgn);
+    this.currentGame.setBoard(pgn, true);
   }
 
   private newGame(playerColor: PieceColor)

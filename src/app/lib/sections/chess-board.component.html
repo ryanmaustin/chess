@@ -1,0 +1,158 @@
+<div class="h-100 w-100 d-flex flex-column">
+  <div
+    id="chessBoard"
+    class="chess-board-container w-100 h-100 p-2 d-flex flex-column mt-auto"
+    [style.height]="this.chessBoardLengthPx()"
+    [style.width]="this.chessBoardLengthPx()"
+  >
+    <div
+      id="movesContainer"
+      class="rounded align-self-center d-flex flex-row pl-2 pr-2 pb-0"
+      [style.width]="this.chessBoardLengthPx()"
+      *ngIf="this.engine.currentGame"
+    >
+      <div class="rounded move-history-container">
+        <div
+          id="moveHistory"
+          class="d-flex flex-row flex-no-wrap pr-2 pl-2 h-100"
+        >
+          <fa-icon
+            icon="step-backward"
+            size="lg"
+            class="mr-2"
+            (click)="this.goToBeginning()"
+          ></fa-icon>
+          <fa-icon
+            icon="caret-left"
+            size="2x"
+            class="mr-2"
+            (click)="this.goToPreviousMove()"
+          ></fa-icon>
+
+          <div
+            id="pastMoves"
+            class="d-flex flex-row flex-no-wrap flex-grow-1 mt-1 mr-3"
+          >
+            <span
+              class="clickable move ml-1 mr-1"
+              *ngFor="let move of this.engine.currentGame.getMovesToShow(9)"
+              [class.current-move]="this.isCurrentMove(move)"
+              (click)="this.goToMove(move)"
+            >
+              {{ move.pgn }}
+            </span>
+          </div>
+
+          <fa-icon
+            icon="caret-right"
+            size="2x"
+            class="mr-2"
+            (click)="this.goToNextMove()"
+          ></fa-icon>
+          <fa-icon
+            icon="step-forward"
+            size="lg"
+            (click)="this.goToEnd()"
+          ></fa-icon>
+
+          <div
+            class="small-divider"
+            *ngIf="this.engine.currentGame.pastMoves.length"
+          ></div>
+
+          <fa-icon
+            class="icon ml-1"
+            icon="clone"
+            size="lg"
+            *ngIf="this.engine.currentGame.pastMoves.length && !this.copied"
+            (click)="this.copyPGNToClipboard()"
+          >
+          </fa-icon>
+          <div *ngIf="this.copied" class="d-flex flex-row flex-no-wrap ml-1">
+            <fa-icon
+              class="mr-1"
+              icon="check"
+              size="md"
+              style="color: greenyellow"
+            ></fa-icon>
+            Copied
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="gameBoard"
+      cdkDropListGroup
+      class="ml-auto mr-auto mb-1 p-1 rounded d-flex flex-column no-select"
+    >
+      <div
+        class="rank d-flex flex-row"
+        *ngFor="
+          let rank of this.engine.currentGame.board.ranks;
+          let index = index
+        "
+      >
+        <div
+          [id]="tile.getPosition().x + '-' + tile.getPosition().y"
+          class="tile"
+          *ngFor="let tile of rank"
+          [class.black-tile]="tile.isBlack()"
+          [class.white-tile]="!tile.isBlack()"
+          [class.tile-drag-over]="tile.hover"
+        >
+          <div class="move-container" *ngIf="this.isAvailableMove(tile)">
+            <div
+              class="make-move glow-purple"
+              (click)="moveSelectedPiece(tile.getPosition())"
+            >
+              •
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="piece"
+        draggable="true"
+        *ngFor="let piece of this.getBlackPieces()"
+        cdkDrag
+        cdkDragBoundary=".board"
+        (cdkDragStarted)="this.dragStart($event, piece)"
+        (cdkDragMoved)="this.drag($event, piece)"
+        (cdkDragEnded)="this.dragEnd($event, piece)"
+        [style.left.px]="this.getPosX(piece.getPosition())"
+        [style.top.px]="this.getPosY(piece.getPosition())"
+        (click)="this.selectPiece(piece)"
+      >
+        <img
+          *ngIf="!piece.isCaptured()"
+          class="piece-img"
+          [src]="piece.getImageUrl()"
+          [style.max-height.px]="this.getTileHeight()"
+        />
+      </div>
+
+      <div
+        class="piece"
+        cdkDrag
+        *ngFor="let piece of this.getWhitePieces()"
+        cdkDrag
+        cdkDragBoundary=".board"
+        (cdkDragStarted)="this.dragStart($event, piece)"
+        (cdkDragMoved)="this.drag($event, piece)"
+        (cdkDragEnded)="this.dragEnd($event, piece)"
+        [style.left.px]="this.getPosX(piece.getPosition())"
+        [style.top.px]="this.getPosY(piece.getPosition())"
+        (click)="this.selectPiece(piece)"
+      >
+        <img
+          *ngIf="!piece.isCaptured()"
+          class="piece-img"
+          [src]="piece.getImageUrl()"
+          [style.max-height.px]="this.getTileHeight()"
+        />
+      </div>
+    </div>
+  </div>
+</div>

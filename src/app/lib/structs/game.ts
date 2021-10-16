@@ -68,10 +68,9 @@ export class Game
     return this;
   }
 
-  public setBoard(pgn: string) {
-
+  public setBoard(pgn: string, saveMoves: boolean)
+  {
     const parsedPgn = <PGN> new Pgn(pgn);
-
     try
     {
       this.computerOn = false;
@@ -100,9 +99,8 @@ export class Game
         const boardMove = this.createMove(pieceToMove, destinationTile, promotion);
         this.board.movePiece(boardMove);
         boardMove.checkmate = this.board.isMate(false);
-        this.board.goToMove(boardMove);
 
-        this.logAndSave(boardMove, false);
+        if (saveMoves) this.logAndSave(boardMove, false);
       }
     }
     catch (error)
@@ -117,39 +115,6 @@ export class Game
     this.availableMoves = [];
     this.selected = null;
     this.ready = true;
-  }
-
-  /**
-   * Generates a Random Computer Move. Note: These are most likely BAD moves.
-   */
-  private getRandomComputerMove(color: PieceColor): Move
-  {
-    const availableComputerMoves = new Map<Piece, Array<Position>>();
-    const availablePieces = new Array<Piece>();
-
-    for (const piece of this.board.getPieces(this.opponentColor))
-    {
-      const moves = new Array<Position>();
-      for (const move of piece.getAvailableMoves(this.board.tiles)) moves.push(move);
-      if (moves.length == 0) continue;
-
-      availableComputerMoves.set(piece, moves);
-      availablePieces.push(piece);
-    }
-
-    const randomPiece = Game.getRandom(0, availablePieces.length - 1);
-    const pieceToMove = availablePieces[randomPiece];
-    const randomMove  = Game.getRandom(0, availableComputerMoves.get(pieceToMove).length - 1);
-
-    const moveToMake = availableComputerMoves.get(pieceToMove)[randomMove];
-
-    return this.createMove(pieceToMove, PositionUtil.getTileAt(this.board.getTiles(), moveToMake), null);
-  }
-
-  private static getRandom(min: number, max: number) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
   }
 
   public mated(): BehaviorSubject<Mate>
@@ -213,7 +178,7 @@ export class Game
   {
     this.pastMoves.push(move);
     this.currentMove = this.pastMoves.length - 1;
-    // this.scrollHistoryAllTheWayToTheRight();
+    this.scrollHistoryAllTheWayToTheRight();
   }
 
   public scrollHistoryAllTheWayToTheRight()
@@ -246,9 +211,59 @@ export class Game
     return this.promotionPiece;
   }
 
-  public goToMove(move: Move)
+  public goToMove(move: Move | number)
   {
-    this.currentMove = this.pastMoves.indexOf(move);
-    this.board.goToMove(move);
+    if (typeof(move) == 'number')
+    {
+      this.currentMove = <number> move;
+    }
+    else
+    {
+      this.currentMove = this.pastMoves.indexOf(<Move>move);
+    }
+    this.board = new Board(this.mate$);
+    this.setBoard(this.getPGN(this.currentMove), false);
+  }
+
+  public getPGN(until ?: number): string
+  {
+    let last = this.pastMoves.length - 1;
+    if (until != null) last = until;
+    let pgn = '';
+    for (let i = 0; i <= this.currentMove; i++)
+    {
+      pgn += this.pastMoves[i].pgn + ' ';
+    }
+    return pgn;
+  }
+
+  public getMovesToShow(count: number): Array<Move>
+  {
+    // -1 for the current move, then each side should be equal
+    let eachside = Math.floor((count - 1) / 2);
+
+    let leftmost = this.currentMove - eachside;
+    let rightmost = this.currentMove + eachside;
+
+    if (rightmost > this.pastMoves.length)
+    {
+      leftmost -= rightmost - this.pastMoves.length;
+    }
+    if (leftmost < 0)
+    {
+      leftmost = 0;
+      rightmost += Math.abs(leftmost);
+    }
+    if (leftmost == 0)
+    {
+      rightmost = count;
+    }
+    if (rightmost > this.pastMoves.length)
+    {
+      rightmost = this.pastMoves.length;
+    }
+
+    const past = this.pastMoves.slice(leftmost, rightmost);
+    return past;
   }
 }

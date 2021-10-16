@@ -55,15 +55,15 @@
         ></p-dropdown>
       </div>
 
-      <div id="ratingSlider" class="board-option display-block ml-4 mr-2">
-        Rating:
-        <input
-          type="text"
+      <div id="ratingSlider" class="board-option display-block ml-4 mr-2 mt-3">
+        <span class="ml-5" style="font-size: 12pt;">Rating:</span>
+        <p-inputNumber
+          id="ratingInput"
           class="rating-input"
-          pInputText
           [(ngModel)]="this.gameOptions.rating"
-          readonly
-        />
+          [min]="100"
+          [max]="3500"
+        ></p-inputNumber>
         <p-slider
           class="display-block"
           [(ngModel)]="this.gameOptions.rating"
@@ -102,7 +102,7 @@
           [style]="{ 'text-align': 'center' }"
           *ngIf="this.engine.games.length"
         >
-          Reset
+          New Game
         </div>
       </div>
     </div>
@@ -138,111 +138,8 @@
     <div class="ml-auto"></div>
   </section>
 
-  <section class="chess-section d-flex flex-grow-1">
-    <div
-      id="chessBoard"
-      class="chess-board-container w-100 h-100 p-3 d-flex flex-column"
-      [style.height]="this.chessBoardLengthPx()"
-      [style.width]="this.chessBoardLengthPx()"
-    >
-      <div
-        id="movesContainer"
-        class="rounded align-self-center d-flex flex-row pl-3 pr-3 pb-0"
-        [style.width]="this.chessBoardLengthPx()"
-        *ngIf="this.engine.currentGame"
-      >
-        <div class="rounded move-history-container">
-          <div
-            id="moveHistory"
-            class="d-flex flex-row flex-no-wrap flex-grow-1 pr-2 pl-2 h-100"
-          >
-            <span
-              class="clickable move ml-1 mr-1"
-              *ngFor="let move of this.engine.currentGame.pastMoves"
-              [class.current-move]="this.isCurrentMove(move)"
-              (click)="this.goToMove(move)"
-            >
-              {{ move.pgn }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        id="gameBoard"
-        cdkDropListGroup
-        class="ml-auto mr-auto mb-1 p-1 rounded d-flex flex-column no-select"
-      >
-        <div
-          class="rank d-flex flex-row"
-          *ngFor="
-            let rank of this.engine.currentGame.board.ranks;
-            let index = index
-          "
-        >
-          <div
-            [id]="tile.getPosition().x + '-' + tile.getPosition().y"
-            class="tile"
-            *ngFor="let tile of rank"
-            [class.black-tile]="tile.isBlack()"
-            [class.white-tile]="!tile.isBlack()"
-            [class.tile-drag-over]="tile.hover"
-          >
-            <div class="move-container" *ngIf="this.isAvailableMove(tile)">
-              <div
-                class="make-move glow-purple"
-                (click)="moveSelectedPiece(tile.getPosition())"
-              >
-                •
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="piece"
-          draggable="true"
-          *ngFor="let piece of this.getBlackPieces()"
-          cdkDrag
-          cdkDragBoundary=".board"
-          (cdkDragStarted)="this.dragStart($event, piece)"
-          (cdkDragMoved)="this.drag($event, piece)"
-          (cdkDragEnded)="this.dragEnd($event, piece)"
-          [style.left.px]="this.getPosX(piece.getPosition())"
-          [style.top.px]="this.getPosY(piece.getPosition())"
-          (click)="this.selectPiece(piece)"
-        >
-          <img
-            *ngIf="!piece.isCaptured()"
-            class="piece-img"
-            [src]="piece.getImageUrl()"
-            [style.max-height.px]="this.getTileHeight()"
-          />
-        </div>
-
-        <div
-          class="piece"
-          cdkDrag
-          *ngFor="let piece of this.getWhitePieces()"
-          cdkDrag
-          cdkDragBoundary=".board"
-          (cdkDragStarted)="this.dragStart($event, piece)"
-          (cdkDragMoved)="this.drag($event, piece)"
-          (cdkDragEnded)="this.dragEnd($event, piece)"
-          [style.left.px]="this.getPosX(piece.getPosition())"
-          [style.top.px]="this.getPosY(piece.getPosition())"
-          (click)="this.selectPiece(piece)"
-        >
-          <img
-            *ngIf="!piece.isCaptured()"
-            class="piece-img"
-            [src]="piece.getImageUrl()"
-            [style.max-height.px]="this.getTileHeight()"
-          />
-        </div>
-      </div>
-    </div>
-
+  <section class="chess-section d-flex flex-grow-1 pb-5">
+    <chess-board class="h-100 w-100"></chess-board>
     <div class="spacer-bottom"></div>
   </section>
 </div>
