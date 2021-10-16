@@ -1,12 +1,11 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnInit } from '@angular/core';
 import { Position } from './lib/structs/position';
 import { Piece, PieceColor, Tile } from './lib/structs/chess';
 import { MatDialog } from '@angular/material/dialog';
 import { CdkDragEnd, CdkDragMove, CdkDragStart } from '@angular/cdk/drag-drop';
 import { ClientGameEngine } from './lib/services/client-game-engine.service';
-
-const GameOption_Study = "Study";
-const GameOption_Play = "Play Game"
+import { GameOptionsService, Mode } from './lib/services/game-options.service';
+import { $ } from 'protractor';
 
 @Component({
   selector: 'app-root',
@@ -19,15 +18,13 @@ export class AppComponent implements OnInit
 
   public pgn: string = '';
 
-  public gameStartOption: string = GameOption_Play;
-  public gameStartOptions = [ GameOption_Play, GameOption_Study ];
-
   private lastHoveredTile: Position;
 
   constructor(
     public dialog: MatDialog,
     private cd: ChangeDetectorRef,
-    public engine: ClientGameEngine
+    public engine: ClientGameEngine,
+    public gameOptions: GameOptionsService
   )
   {
   }
@@ -55,11 +52,6 @@ export class AppComponent implements OnInit
   public moveSelectedPiece(pos: Position)
   {
     this.engine.moveSelectedPiece(pos);
-  }
-
-  public changePlayerColor()
-  {
-    this.engine.playerIsWhite = !this.engine.playerIsWhite;
   }
 
   public startNewGame()
@@ -159,16 +151,27 @@ export class AppComponent implements OnInit
 
   public studyOptionSelected(): boolean
   {
-    return this.gameStartOption == GameOption_Study;
+    return this.gameOptions.currentMode == Mode.STUDY;
   }
 
   public playOptionSelected(): boolean
   {
-    return this.gameStartOption == GameOption_Play;
+    return this.gameOptions.currentMode == Mode.PLAY;
   }
 
   public chessBoardLengthPx()
   {
-    return document.getElementById('chessBoard').clientWidth + 'px';
+    if (window.screen.width > 1000)
+    {
+      return '500px !important';
+    }
+    return Math.floor(window.screen.width * .98) + 'px !important';
+  }
+
+  @HostListener('window:resize', ['$event'])
+  public onWindowResize()
+  {
+    this.cd.markForCheck();
+    this.cd.detectChanges();
   }
 }

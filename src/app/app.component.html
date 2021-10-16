@@ -1,108 +1,149 @@
-<div class="main h-100 w-100">
-  <section class="board-options mb-auto pl-3 pr-3 d-flex flex-row">
+<div class="main h-100 w-100 d-flex flex-column">
+  <section class="board-options pl-3 pr-3 d-flex flex-row">
+    <div class="logo">
+      <img class="logo-img" src="assets/em-logo.png" />
+    </div>
+
     <div class="ml-auto flex-grow-1"></div>
 
-    <div class="mat-form-field-wrapper game-start">
-      <mat-form-field appearance="fill" style="max-width: 7.5rem">
-        <mat-select [(value)]="this.gameStartOption">
-          <mat-option
-            *ngFor="let option of this.gameStartOptions"
-            [value]="option"
-          >
-            {{ option }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+    <div class="game-mode-selection-wrapper flex-column">
+      <p-dropdown
+        [options]="this.gameOptions.modes"
+        [(ngModel)]="this.gameOptions.currentMode"
+        (onChange)="this.gameOptions.showOptionsAgain()"
+        [baseZIndex]="20002"
+      ></p-dropdown>
     </div>
+  </section>
+
+  <section
+    class="board-sub-options mb-auto d-flex flex-row pt-2 pb-2 pr-4 pl-4"
+    *ngIf="this.gameOptions.showOptions"
+  >
+    <div class="mr-auto"></div>
 
     <!-- New Game Option -->
     <div
-      class="board-options-group d-flex flex-row flex-grow-1"
+      class="board-options-group d-flex flex-wrap"
       *ngIf="this.playOptionSelected()"
     >
-      <div class="board-option">
-        <mat-radio-group class="board-option">
-          <mat-radio-button
-            value="White"
-            [checked]="this.engine.playerIsWhite"
-            (change)="this.changePlayerColor()"
-            >White</mat-radio-button
+      <div
+        class="board-option"
+        *ngIf="this.gameOptions.currentOpponent.toString() == 'Computer'"
+      >
+        <div *ngFor="let color of this.gameOptions.colors" class="mr-3">
+          <p-radioButton
+            [value]="color"
+            [(ngModel)]="this.gameOptions.currentColor"
+          ></p-radioButton>
+          <label
+            class="ml-1"
+            [for]="color"
+            (click)="this.gameOptions.changeColor(color)"
+            >{{ color }}</label
           >
-          <mat-radio-button
-            [checked]="!this.engine.playerIsWhite"
-            value="Black"
-            class="ml-3"
-            (change)="this.changePlayerColor()"
-            >Black</mat-radio-button
-          >
-        </mat-radio-group>
-      </div>
+        </div>
 
-      <div class="options-divider"></div>
+        <div class="options-divider">&nbsp;</div>
+      </div>
 
       <div class="board-option">
-        <mat-checkbox
-          color="white"
-          [(ngModel)]="this.engine.computerOn"
-          class="board-option"
-          >Computer</mat-checkbox
-        >
+        <p-dropdown
+          [options]="this.gameOptions.opponents"
+          [(ngModel)]="this.gameOptions.currentOpponent"
+          [baseZIndex]="20002"
+        ></p-dropdown>
       </div>
 
-      <div class="options-divider"></div>
-
-      <div id="playButton" *ngIf="!this.gameOn" (click)="this.startNewGame()">
-        <button mat-raised-button color="primary">Play</button>
+      <div id="ratingSlider" class="board-option display-block ml-4 mr-2">
+        Rating:
+        <input
+          type="text"
+          class="rating-input"
+          pInputText
+          [(ngModel)]="this.gameOptions.rating"
+          readonly
+        />
+        <p-slider
+          class="display-block"
+          [(ngModel)]="this.gameOptions.rating"
+          [min]="100"
+          [max]="3500"
+        ></p-slider>
       </div>
+
+      <div class="options-divider">&nbsp;</div>
 
       <div
-        id="resetButton"
-        class="ml-auto mr-auto btn btn-secondary"
-        *ngIf="this.gameOn"
+        class="flex-grow-1"
+        id="playButton"
+        *ngIf="!this.gameOn"
         (click)="this.startNewGame()"
       >
-        Reset
+        <button
+          pButton
+          type="button"
+          class="p-button-raised p-button-help p-button-rounded ml-auto mr-auto"
+          [style]="{ 'text-align': 'center' }"
+          *ngIf="!this.engine.currentGame"
+        >
+          Start Game
+        </button>
+
+        <div
+          id="resetButton"
+          pButton
+          type="button"
+          class="
+            p-button-raised p-button-primary p-button-rounded
+            ml-auto
+            mr-auto
+          "
+          [style]="{ 'text-align': 'center' }"
+          *ngIf="this.engine.currentGame"
+        >
+          Reset
+        </div>
       </div>
     </div>
     <!-- End New Game Option-->
 
     <!-- PGN Game Option -->
     <div
-      class="board-options-group d-flex flex-row flex-grow-1 h-100"
+      class="board-options-group d-flex flex-row flex-grow-1 h-100 mt-2"
       *ngIf="this.studyOptionSelected()"
     >
-      <div class="board-option mat-form-field-wrapper flex-grow-1">
-        <form class="flex-grow-1 d-flex flex-row h-100">
-          <mat-form-field
-            class="example-full-width"
-            class="flex-grow-1"
-            appearance="fill"
-          >
-            <mat-label>Chess Notation Moves</mat-label>
-            <input matInput [(ngModel)]="this.pgn" name="pgn" />
-          </mat-form-field>
-        </form>
+      <div class="board-option game-mode-selection-wrapper flex-grow-1">
+        <input
+          class="pgn-input"
+          type="text"
+          pInputText
+          placeholder="Insert PGN (Optional)"
+          [(ngModel)]="this.pgn"
+        />
       </div>
 
       <button
-        mat-raised-button
-        color="primary"
-        class="ml-2"
+        pButton
+        type="button"
+        class="p-button-raised p-button-help p-button-rounded ml-2 mr-auto"
+        [style]="{ 'text-align': 'center' }"
         (click)="this.setBoardFromPgn()"
       >
-        Go
+        Anlayze
       </button>
     </div>
     <!-- End PGN Game Option -->
 
-    <div class="mr-auto flex-grow-1"></div>
+    <div class="ml-auto"></div>
   </section>
 
-  <section class="h-100 w-100 chess-section d-flex">
+  <section class="chess-section d-flex flex-grow-1">
     <div
       id="chessBoard"
-      class="chess-board-container w-100 p-3 d-flex flex-column"
+      class="chess-board-container w-100 h-100 p-3 d-flex flex-column"
       [style.height]="this.chessBoardLengthPx()"
+      [style.width]="this.chessBoardLengthPx()"
     >
       <div
         id="movesContainer"
@@ -113,13 +154,7 @@
         <div class="rounded move-history-container">
           <div
             id="moveHistory"
-            class="
-              d-flex
-              flex-row flex-no-wrap flex-grow-1
-              pr-2
-              pl-2
-              h-100
-            "
+            class="d-flex flex-row flex-no-wrap flex-grow-1 pr-2 pl-2 h-100"
           >
             <span
               class="ml-1 mr-1"
@@ -139,7 +174,10 @@
       >
         <div
           class="rank d-flex flex-row"
-          *ngFor="let rank of this.engine.currentGame.board.ranks; let index = index"
+          *ngFor="
+            let rank of this.engine.currentGame.board.ranks;
+            let index = index
+          "
         >
           <div
             [id]="tile.getPosition().x + '-' + tile.getPosition().y"

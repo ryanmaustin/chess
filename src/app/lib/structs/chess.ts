@@ -14,7 +14,8 @@ export enum PieceType
 export enum PieceColor
 {
   WHITE = 'WHITE',
-  BLACK = 'BLACK'
+  BLACK = 'BLACK',
+  RANDOM = 'Random'
 }
 
 export interface Direction

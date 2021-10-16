@@ -18,16 +18,24 @@ import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { DropdownModule } from 'primeng/dropdown';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { RadioButtonModule } from 'primeng/radiobutton';
+import { ButtonModule } from 'primeng/button';
+import { SliderModule } from 'primeng/slider';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { InputTextModule } from 'primeng/inputtext';
 
 import { InjectableRxStompConfig, RxStompService, rxStompServiceFactory } from '@stomp/ng2-stompjs';
 import { myRxStompConfig } from './lib/config/rx-stomp-config';
 
 import { GameService } from './lib/services/game.service';
+import { GameOptionsService } from './lib/services/game-options.service';
+import { ClientGameEngine } from './lib/services/client-game-engine.service';
 import { GamePromptService } from './lib/services/game-prompts.service';
 
 import { GamePromptComponent } from './lib/services/game-prompt.component';
-import { ClientGameEngine } from './lib/services/client-game-engine.service';
-import { ScrollingModule } from '@angular/cdk/scrolling';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 
 @NgModule({
   declarations: [
@@ -54,7 +62,14 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
     MatButtonModule,
     MatSelectModule,
     HttpClientModule,
-    DropdownModule
+    DropdownModule,
+    SelectButtonModule,
+    RadioButtonModule,
+    ButtonModule,
+    SliderModule,
+    InputTextareaModule,
+    InputTextModule,
+    FontAwesomeModule
   ],
   providers: [
     {
@@ -68,6 +83,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
     },
     GameService,
     GamePromptService,
+    GameOptionsService,
     ClientGameEngine
   ],
   bootstrap: [

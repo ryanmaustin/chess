@@ -8,6 +8,7 @@ import { Game } from "../structs/game";
 import { Position } from "../structs/position";
 import { PGNMoveMap } from "../util/pgn-util";
 import { CheckmateDialog } from "./checkmate-dialog.component";
+import { GameOptionsService } from "./game-options.service";
 import { GameService } from "./game.service";
 import { PromotionChoicePrompt } from "./promotion-choice-prompt.component";
 
@@ -17,8 +18,6 @@ export class ClientGameEngine
   public games = new Array<Game>();
   public gameOn: boolean = false;
   public currentGame: Game;
-  public computerOn: boolean = true;
-  public playerIsWhite: boolean = true;
 
   private mateSubscription$: Subscription;
   private promotionSubscription: Subscription;
@@ -26,7 +25,8 @@ export class ClientGameEngine
 
   constructor(
     public dialog: MatDialog,
-    private gameService: GameService
+    private gameService: GameService,
+    private gameOptions: GameOptionsService
   )
   {
     this.promotionChoiceNeeded$ = new Subject<Function>();
@@ -49,8 +49,6 @@ export class ClientGameEngine
       this.promotionSubscription.unsubscribe();
     }
     this.promotionSubscription = this.subscribeToPromotionChoiceNeeded();
-
-    this.playerIsWhite = this.currentGame.getPlayerColor() == PieceColor.WHITE;
   }
 
   private subscribeToGameServiceMoves()
@@ -119,8 +117,9 @@ export class ClientGameEngine
 
   public requestNewGame()
   {
-    const playerColor = this.playerIsWhite ? PieceColor.WHITE : PieceColor.BLACK;
-    this.gameService.requestGame(this.computerOn, playerColor).subscribe(
+    const options = this.gameOptions.getOptions();
+    const playerColor = options.playerColor;
+    this.gameService.requestGame(options.againstComputer, playerColor, null, options.rating).subscribe(
       (challenge) =>
       {
         this.newGame(this.getPlayerColor(challenge));
@@ -131,7 +130,7 @@ export class ClientGameEngine
           this.currentGame.board.flip();
         }
 
-        console.warn("Game Started", this.currentGame, this.playerIsWhite);
+        console.warn("Game Started", this.currentGame);
       }
     );
   }
@@ -153,7 +152,6 @@ export class ClientGameEngine
 
   public setBoard(pgn: string)
   {
-    this.computerOn = false;
     this.newGame(PieceColor.WHITE);
     this.currentGame.setBoard(pgn);
   }
@@ -165,6 +163,7 @@ export class ClientGameEngine
     this.currentGame.startGame();
     this.changeGame(this.games.length - 1);
     this.currentGame.setPlayerColor(playerColor);
+    this.gameOptions.hideOptions();
   }
 
   public moveSelectedPiece(pos: Position)

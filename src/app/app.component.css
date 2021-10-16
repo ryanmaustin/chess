@@ -1,6 +1,5 @@
 .main {
-  background-color: #1d1d1d;
-  background-image: linear-gradient(315deg, #1c1c1c 0%, #1d1d1d 74%);
+  background-color: #1c1c1c;
 }
 
 .chess-section {
@@ -13,12 +12,7 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: auto;
-  width: 45vw;
-  height: 45vw;
   display: block;
-
-  max-width: 60vh;
-  max-height: 60vh;
 }
 
 #gameBoard {
@@ -40,7 +34,6 @@
   display: flex;
   height: 50px;
   align-items: center;
-  width: 100%;
 }
 
 .move-history-container {
@@ -67,31 +60,47 @@
 }
 
 .board-options {
-  position: fixed;
   background-color: #3b4557;
   background-image: linear-gradient(315deg, #393f4a 0%, #3b4557 74%);
-  height: 5rem;
+  height: 6rem;
+  width: 100%;
+  font-size: 12pt;
+  filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
+  align-items: center;
+  z-index: 20001;
+}
+
+.board-sub-options {
+  background-color: #3b4557;
+  background-image: linear-gradient(315deg, #6f7a8f 0%, #687896 74%);
   width: 100%;
   filter: drop-shadow(2px 2px 2px rgb(24, 24, 24, 0.5));
   align-items: center;
+  z-index: 20000;
 }
 
 .board-options-group {
   display: flex;
   align-items: center;
-  max-width: 400px;
+  flex-direction: row;
 }
 
 .board-option {
-  height: 100%;
   display: flex;
+  height: 4rem;
+  align-items: center;
+  flex-grow: 1;
   align-items: center;
 }
 
-.mat-form-field-wrapper {
-  height: 100%;
-  padding-top: 1rem;
-  padding-right: 2rem;
+.display-block {
+  display: block;
+}
+
+.game-mode-selection-wrapper {
+  display: flex;
+  padding-right: 0.5rem;
+  align-items: center;
 }
 
 ::ng-deep .mat-form-field
@@ -111,11 +120,26 @@
   color: white !important;
 }
 
+:host ::ng-deep .p-dropdown {
+  background-color: rgba(0,0,0,0);
+}
+
+:host ::ng-deep .p-button {
+  color: white;
+  font-weight: 300;
+}
+
+input {
+  background-color: rgba(0,0,0,0);
+  border: none;
+  color: white;
+}
+
 .options-divider {
-  height: 65%;
-  border-right: 2px solid rgba(94, 71, 116, 0.3);
-  margin-left: auto;
-  margin-right: auto;
+  height: 2rem;
+  border-right: 2px solid rgba(94, 71, 116, 0.5);
+  margin-right: 2rem;
+  margin-left: 2rem;
 }
 
 .rank {
@@ -165,7 +189,9 @@
 }
 
 #playButton {
+  display: flex;
   font-size: 10pt;
+  align-items: center;
 }
 
 .piece {
@@ -207,7 +233,19 @@
   margin-top: auto;
 }
 
-@media only screen and (max-width: 1000px) {
+.logo {
+  display: flex;
+  max-width: 15%;
+  height: 100%;
+  align-items: center;
+}
+
+.logo-img {
+  width: 100%;
+  max-height: 80%;
+}
+
+@media only screen and (max-width: 750px) {
 
   #chessBoard {
     margin-bottom: 5rem;
@@ -217,7 +255,29 @@
     margin-top: 6rem;
   }
 
+  .logo {
+    max-width: 50%;
+    height: 100%;
+  }
+
   .board-options-group {
-    flex-wrap:wrap-reverse;
+    flex-direction: column;
+  }
+
+  .options-divider {
+    display: none;
+  }
+
+  #playButton {
+    margin-bottom: 1.5rem;
+  }
+
+  .board-option {
+    margin-top: 1rem;
+  }
+
+  #ratingSlider {
+    margin-bottom: 1.5rem;
   }
 }
+

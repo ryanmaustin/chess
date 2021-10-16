@@ -115,27 +115,7 @@ export class Game
     this.board.setup();
     this.availableMoves = [];
     this.selected = null;
-
-    if (this.computerOn && this.playerColor == PieceColor.BLACK)
-    {
-      this.board.flip();
-      console.log(this.board.ranks);
-      this.makeComputerMove();
-    }
     this.ready = true;
-  }
-
-  public makeComputerMove()
-  {
-    const move = this.getRandomComputerMove(this.opponentColor);
-    const pieceToMove = move.movingPiece;
-
-    move.promotionPiece = PieceType.QUEEN;
-    this.board.movePiece(move);
-    move.checkmate = this.board.isMate(false)
-    this.logAndSave(move, true);
-
-    console.log(`Computer moved ${pieceToMove.getType()} to [${move.destinationTile.getPosition().x},${move.destinationTile.getPosition().y}]`);
   }
 
   /**
@@ -204,8 +184,6 @@ export class Game
     move.checkmate = this.board.isMate(false)
     if (move.checkmate != null) this.board.switchTurn(color); // Switch board back since there are no more turns
     this.logAndSave(move, true);
-
-    if (this.computerOn && this.isComputerTurn() && move.checkmate == null) this.makeComputerMove();
   }
 
   private createMove(pieceToMove: Piece, destinationTile: Tile, promotionPiece: PieceType): Move

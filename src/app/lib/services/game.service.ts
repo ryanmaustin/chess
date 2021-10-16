@@ -154,21 +154,20 @@ export class GameService
     }
   }
 
-  public requestGame(againstComputer: boolean, color ?: PieceColor, opponentPlayerId ?: string): Subject<GameRequest>
+  public requestGame(againstComputer: boolean, color: PieceColor, opponentPlayerId: string, rating: number): Subject<GameRequest>
   {
-    console.warn("Against computer?", againstComputer);
     if (againstComputer)
     {
-      this.challengeAComputer();
+      this.challengeAComputer(color, rating);
     }
     else
     {
-      this.challengeAPlayer();
+      this.challengeAPlayer(opponentPlayerId, color, rating);
     }
     return this.gameStarted$;
   }
 
-  private challengeAComputer(color ?: PieceColor)
+  private challengeAComputer(color: PieceColor, rating: number)
   {
     console.warn("Computer Challenge Requested");
     const challengeRequest = <GameRequest>
@@ -178,12 +177,13 @@ export class GameService
       opponentPlayerId: "COMPUTER",
       clockInSeconds: 3000,
       incrementInSeconds: 0,
-      accepted: false
+      accepted: false,
+      rating: rating
     }
     this.submitGameRequest(challengeRequest);
   }
 
-  private challengeAPlayer(opponentId ?: string, color ?: PieceColor)
+  private challengeAPlayer(opponentId: string, color: PieceColor, rating: number)
   {
     this.waitingForAnOpponent = opponentId == null;
     const challengeRequest = <GameRequest>
@@ -193,7 +193,8 @@ export class GameService
       opponentPlayerId: opponentId,
       clockInSeconds: 3000,
       incrementInSeconds: 0,
-      accepted: false
+      accepted: false,
+      rating: rating
     }
     this.submitGameRequest(challengeRequest);
   }
