@@ -9,6 +9,9 @@ import { King } from "./pieces/king";
 import { Position } from "./position";
 import { BehaviorSubject } from "rxjs";
 
+/**
+ * A Move in Chess
+ */
 export interface Move
 {
   movingPiece: Piece,
@@ -20,6 +23,13 @@ export interface Move
   checkmate ?: boolean
 }
 
+/**
+ * Tracks the availability of En Passant for a certain Color. For example,
+ * if En Passant is an available capture for White and it is their first
+ * turn after a Pawn's 2-square jump, then this object will be
+ * { available: true, color: WHITE, turns: 1 }, indicating that WHITE
+ * has 1 turn to capture by En Passant.
+ */
 export interface EnPassant
 {
   available: boolean,
@@ -27,6 +37,19 @@ export interface EnPassant
   turns: number
 }
 
+/**
+ * Object for tracking the end of a Game by Checkmate or Stalemate.
+ */
+export interface Mate
+{
+   winner: PieceColor,
+   checkmate: boolean
+}
+
+/**
+ * Allows a Move of a Piece to be performed on an array of Tiles. Given a position,
+ * this object can also report Checkmate, Stalemate, or Draw.
+ */
 export class Board {
 
   public ranks: Array<Rank>;
@@ -445,10 +468,4 @@ export class Board {
     }
   }
 
-}
-
-export interface Mate
-{
-  winner: PieceColor,
-  checkmate: boolean
 }

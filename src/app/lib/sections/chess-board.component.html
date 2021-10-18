@@ -35,9 +35,10 @@
           >
             <span
               class="clickable move ml-1 mr-1"
-              *ngFor="let move of this.engine.currentGame.getMovesToShow(9)"
+              *ngFor="let move of this.engine.currentGame.getMovesToShow(this.getNumberOfMovesToShowForCurrentBoard())"
               [class.current-move]="this.isCurrentMove(move)"
               (click)="this.goToMove(move)"
+              [style.width]="(100/this.getNumberOfMovesToShowForCurrentBoard()) + '%'"
             >
               {{ move.pgn }}
             </span>
@@ -68,14 +69,14 @@
             (click)="this.copyPGNToClipboard()"
           >
           </fa-icon>
-          <div *ngIf="this.copied" class="d-flex flex-row flex-no-wrap ml-1">
+          <div *ngIf="this.copied" class="copy d-flex flex-column flex-no-wrap ml-1" style="font-size: 8pt;">
             <fa-icon
               class="mr-1"
               icon="check"
               size="md"
               style="color: greenyellow"
             ></fa-icon>
-            Copied
+            <p style="margin-top: -12px;">Copied</p>
           </div>
         </div>
       </div>

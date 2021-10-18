@@ -1,4 +1,4 @@
-import { Component, Inject } from "@angular/core";
+import { Component, Inject, NgZone } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { startCase } from "lodash";
 import { Mate } from "../structs/board";
@@ -15,10 +15,15 @@ export class CheckmateDialog {
 
   constructor(
     public dialogRef: MatDialogRef<CheckmateDialog>,
+    private ngZone: NgZone,
     @Inject(MAT_DIALOG_DATA) public data: Mate) {}
 
-  onNoClick(): void {
-    this.dialogRef.close();
+  onNoClick(): void
+  {
+    this.ngZone.run(() =>
+    {
+      this.dialogRef.close();
+    });
   }
 
   public format(str: string): string {

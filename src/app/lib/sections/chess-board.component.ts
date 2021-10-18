@@ -26,13 +26,18 @@ export class ChessBoardComponent
   ) {}
 
 
-  public chessBoardLengthPx()
+  public chessBoardLengthPx(): string
+  {
+    return this.chessBoardLength() + 'px !important';
+  }
+
+  private chessBoardLength(): number
   {
     if (window.screen.width > 1000)
     {
-      return '500px !important';
+      return 500;
     }
-    return Math.floor(window.screen.width * .98) + 'px !important';
+    return Math.floor(window.screen.width * .98);
   }
 
   public isAvailableMove(tile: Tile): boolean
@@ -94,12 +99,16 @@ export class ChessBoardComponent
 
   public drag(event: CdkDragMove, piece: Piece)
   {
-    if (this.lastHoveredTile)
+    try
     {
-      document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "";
+      if (this.lastHoveredTile)
+      {
+        document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "";
+      }
+      this.lastHoveredTile = this.calculateTile(piece, event.distance);
+      document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "brightness(90%)";
     }
-    this.lastHoveredTile = this.calculateTile(piece, event.distance);
-    document.getElementById(this.lastHoveredTile.x + "-" + this.lastHoveredTile.y).style.filter = "brightness(90%)";
+    catch (e) {}
   }
 
   public getPosX(position: Position): number
@@ -183,5 +192,11 @@ export class ChessBoardComponent
     this.cb.copy(this.engine.currentGame.getPGN());
 
     setTimeout(() => { this.copied = false; }, 3000);
+  }
+
+  public getNumberOfMovesToShowForCurrentBoard(): number
+  {
+    let desiredNumberOfMoves = this.chessBoardLength() / 60;
+    return desiredNumberOfMoves > 9 ? 9 : Math.ceil(desiredNumberOfMoves);
   }
 }

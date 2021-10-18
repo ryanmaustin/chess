@@ -92,10 +92,14 @@
   border-top-right-radius: 0 !important;
 }
 
+.copy {
+  display: flex;
+  align-items: center;
+}
+
 .move {
   padding-bottom: 0.25rem;
   margin: 0;
-  width: 11.11%;
   text-align: center;
 }
 

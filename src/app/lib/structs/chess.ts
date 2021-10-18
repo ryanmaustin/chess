@@ -1,6 +1,9 @@
 import { King } from "./pieces/king";
 import { Position } from "./position";
 
+/**
+ * The Type of Piece
+ */
 export enum PieceType
 {
   PAWN = 'PAWN',
@@ -11,6 +14,9 @@ export enum PieceType
   KING = 'KING'
 }
 
+/**
+ * The Color for both Pieces and Tiles
+ */
 export enum PieceColor
 {
   WHITE = 'WHITE',
@@ -18,12 +24,18 @@ export enum PieceColor
   RANDOM = 'Random'
 }
 
+/**
+ * The direction of both the X and Y axis. Each value should be 1 (north/east), -1 (south/west) or 0.
+ */
 export interface Direction
 {
    x: 1 | -1 | 0,
    y: 1 | -1 | 0
 }
 
+/**
+ * The Type and Color of the Promotion
+ */
 export interface Promotion
 {
   type: PieceType,
@@ -39,6 +51,10 @@ export const SW = <Direction> { x: -1, y: -1 };
 export const W = <Direction> { x: -1, y: 0 };
 export const NW = <Direction> { x: -1, y: 1 };
 
+/**
+ * Abstract class for a Piece containing the Piece's current position, color, type,
+ * number of moves performed, and if the piece has been captured.
+ */
 export abstract class Piece
 {
   protected _captured: boolean = false;
@@ -280,6 +296,10 @@ export const PieceImgMap = new Map<PieceType, string>([
   [ PieceType.KING, '-k.png'],
 ]);
 
+/**
+ * Several utility methods used to analyze a Chess board which is represented
+ * as an array of tiles.
+ */
 export class PositionUtil {
 
   public static tileOccupiedBySameColor(tiles: Array<Tile>, color: PieceColor, pos: Position): boolean
@@ -432,6 +452,10 @@ export class PositionUtil {
 
 }
 
+/**
+ * A Tile has a Position on a Board and contains a Piece. If the Tile is empty,
+ * then the Piece will be null.
+ */
 export class Tile {
 
   public piece: Piece;

@@ -11,6 +11,29 @@ export class King extends Piece
 
   protected availableMoves(tiles: Array<Tile>): Array<Position>
   {
+    const moves = this.directionalMoves(tiles);
+
+    const rank = this.color == PieceColor.BLACK ? 8 : 1;
+
+    // Castle Left Side
+    if (this.canCastle(tiles, { x: 1, y: rank })) {
+      moves.push({ x: this.position.x - 2, y: rank });
+    }
+
+    // Castle Right Side
+    if (this.canCastle(tiles, { x: 8, y: rank })) {
+      moves.push({ x: this.position.x + 2, y: rank });
+    }
+
+    return this.keepKingsTwoSquaresAway(tiles, moves);
+  }
+
+  /**
+   * When evaluating the enemy King's moves, we might only want to retrieve that King's
+   * directional moves to keep both Kings two squares away.
+   */
+  private directionalMoves(tiles: Array<Tile>): Array<Position>
+  {
     const moves = new Array<Position>();
 
     // NW
@@ -30,21 +53,13 @@ export class King extends Piece
     // W
     for (const move of PositionUtil.directionalMoves(tiles, this, -1, 0, true)) moves.push(move);
 
-    const rank = this.color == PieceColor.BLACK ? 8 : 1;
-
-    // Castle Left Side
-    if (this.canCastle(tiles, { x: 1, y: rank })) {
-      moves.push({ x: this.position.x - 2, y: rank });
-    }
-
-    // Castle Right Side
-    if (this.canCastle(tiles, { x: 8, y: rank })) {
-      moves.push({ x: this.position.x + 2, y: rank });
-    }
-
     return moves;
   }
 
+  /**
+   * Determines if a King can castle within the given position depending on the position of the Rook
+   * provided.
+   */
   private canCastle(tiles: Array<Tile>, rookPosition: Position): boolean
   {
     if (this.moves > 0) return false;
@@ -92,6 +107,31 @@ export class King extends Piece
     return enemyCanReach;
   }
 
+  /**
+   * If the enemy King can reach any of the positions defined by the given moves, those moves will
+   * be removed in order to keep the Kings two squares apart.
+   */
+  private keepKingsTwoSquaresAway(tiles: Array<Tile>, moves: Array<Position>)
+  {
+    const enemyColor = this.color == PieceColor.WHITE ? PieceColor.BLACK : PieceColor.WHITE;
+    const enemyKing = PositionUtil.getKing(enemyColor, tiles);
+    const enemyKingVision = enemyKing.directionalMoves(tiles);
+    const legalMoves = new Array<Position>();
+    for (const move of moves)
+    {
+      let matchFound = false;
+      for (const enemyKingMove of enemyKingVision)
+      {
+        if (PositionUtil.matches(move, enemyKingMove))
+        {
+          matchFound = true;
+          break;
+        }
+      }
+      if (!matchFound) legalMoves.push(move); // Enemy king can't reach this position
+    }
+    return legalMoves;
+  }
 
   public getClone(): Piece {
     const clone = new King(this.color);
